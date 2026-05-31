@@ -215,16 +215,16 @@ fun CheckoutScreen(
                 PaymentOption(
                     label = "UPI / Online",
                     icon = "📲",
-                    selected = state.selectedPayment != PaymentMethod.CASH,
-                    onClick = { viewModel.selectPayment(PaymentMethod.UPI_ONLY) }
+                    selected = state.selectedPayment != PaymentMethod.UPI_AND_CASH,
+                    onClick = { viewModel.selectPayment(PaymentMethod.UPI) }
                 )
                 if (allowCash) {
                     Spacer(Modifier.height(8.dp))
                     PaymentOption(
                         label = "Cash on Delivery",
                         icon = "💵",
-                        selected = state.selectedPayment == PaymentMethod.CASH,
-                        onClick = { viewModel.selectPayment(PaymentMethod.CASH) }
+                        selected = state.selectedPayment == PaymentMethod.UPI_AND_CASH,
+                        onClick = { viewModel.selectPayment(PaymentMethod.UPI_AND_CASH) }
                     )
                 } else {
                     Spacer(Modifier.height(4.dp))

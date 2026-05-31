@@ -5,7 +5,7 @@ package com.ccs.thaparbites.data.dummy
 // ─────────────────────────────────────────────
 
 enum class StoreStatus { OPEN, CLOSED, BUSY }
-enum class PaymentMethod { UPI_ONLY, UPI_AND_CASH }
+enum class PaymentMethod { UPI, UPI_AND_CASH }
 enum class OrderStatus { PLACED, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED }
 
 data class Store(

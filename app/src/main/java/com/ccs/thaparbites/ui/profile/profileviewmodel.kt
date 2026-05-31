@@ -3,102 +3,88 @@ package com.ccs.thaparbites.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ccs.thaparbites.data.dummy.UserProfile
-import com.ccs.thaparbites.data.dummy.dummyUser
-import kotlinx.coroutines.delay
+import com.ccs.thaparbites.data.repository.AuthRepository
+import com.ccs.thaparbites.data.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-data class ProfileScreenState(
-    val user: UserProfile = dummyUser,
-    val editPhone: String = "",
-    val editHostel: String = "",
-    val isEditMode: Boolean = false,
-    val isSaving: Boolean = false,
-    val saveSuccess: Boolean = false,
-    val showSignOutDialog: Boolean = false,
-    val error: String? = null
-)
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
+) : ViewModel() {
 
-class ProfileViewModel : ViewModel() {
+    private val _user = MutableStateFlow<UserProfile?>(null)
+    val user: StateFlow<UserProfile?> = _user
 
-    private val _state = MutableStateFlow(ProfileScreenState())
-    val state: StateFlow<ProfileScreenState> = _state.asStateFlow()
+    private val _isEditing = MutableStateFlow(false)
+    val isEditing: StateFlow<Boolean> = _isEditing
 
-    init {
-        loadProfile()
-    }
+    private val _editPhone = MutableStateFlow("")
+    val editPhone: StateFlow<String> = _editPhone
 
-    fun loadProfile() {
+    private val _editHostel = MutableStateFlow("")
+    val editHostel: StateFlow<String> = _editHostel
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving
+
+    private val _showSignOutDialog = MutableStateFlow(false)
+    val showSignOutDialog: StateFlow<Boolean> = _showSignOutDialog
+
+    private val _phoneError = MutableStateFlow<String?>(null)
+    val phoneError: StateFlow<String?> = _phoneError
+
+    init { loadUser() }
+
+    private fun loadUser() {
         viewModelScope.launch {
-            // TODO: Replace with Firestore fetch:
-            // val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            // val doc = firestore.collection("users").document(uid).get().await()
-            // val user = doc.toObject(UserProfile::class.java) ?: return@launch
-            delay(400)
-            val user = dummyUser
-            _state.update { it.copy(user = user, editPhone = user.phone, editHostel = user.hostelName) }
+            _user.value = userRepository.getUser()
+            _editPhone.value = _user.value?.phone ?: ""
+            _editHostel.value = _user.value?.hostelName ?: ""
         }
     }
 
-    fun enterEditMode() {
-        _state.update { it.copy(isEditMode = true, editPhone = it.user.phone, editHostel = it.user.hostelName) }
+    fun startEditing() { _isEditing.value = true }
+
+    fun onPhoneChanged(value: String) {
+        _editPhone.value = value
+        _phoneError.value = null
     }
 
-    fun exitEditMode() {
-        _state.update { it.copy(isEditMode = false, error = null) }
-    }
-
-    fun onPhoneChanged(phone: String) {
-        _state.update { it.copy(editPhone = phone.filter { c -> c.isDigit() }.take(10)) }
-    }
-
-    fun onHostelChanged(hostel: String) {
-        _state.update { it.copy(editHostel = hostel) }
-    }
+    fun onHostelChanged(value: String) { _editHostel.value = value }
 
     fun saveChanges() {
-        val s = _state.value
-        if (s.editPhone.length != 10) {
-            _state.update { it.copy(error = "Phone number must be 10 digits") }
+        val phone = _editPhone.value.trim()
+        if (phone.length != 10 || !phone.all { it.isDigit() }) {
+            _phoneError.value = "Enter a valid 10-digit phone number"
             return
         }
-        if (s.editHostel.isBlank()) {
-            _state.update { it.copy(error = "Hostel cannot be empty") }
-            return
-        }
-
         viewModelScope.launch {
-            _state.update { it.copy(isSaving = true, error = null) }
-            try {
-                delay(800) // simulate network
-                // TODO: Firestore update:
-                // firestore.collection("users").document(uid).update(
-                //     "phone" to editPhone,
-                //     "hostelName" to editHostel
-                // ).await()
-                val updated = s.user.copy(phone = s.editPhone, hostelName = s.editHostel)
-                _state.update { it.copy(user = updated, isSaving = false, isEditMode = false, saveSuccess = true) }
-                delay(2000)
-                _state.update { it.copy(saveSuccess = false) }
-            } catch (e: Exception) {
-                _state.update { it.copy(isSaving = false, error = e.message ?: "Save failed") }
+            _isSaving.value = true
+            val success = userRepository.updateUser(phone, _editHostel.value)
+            if (success) {
+                _user.value = _user.value?.copy(phone = phone, hostelName = _editHostel.value)
+                _isEditing.value = false
             }
+            _isSaving.value = false
         }
     }
 
-    fun showSignOutDialog() = _state.update { it.copy(showSignOutDialog = true) }
-    fun hideSignOutDialog() = _state.update { it.copy(showSignOutDialog = false) }
+    fun cancelEditing() {
+        _isEditing.value = false
+        _editPhone.value = _user.value?.phone ?: ""
+        _editHostel.value = _user.value?.hostelName ?: ""
+        _phoneError.value = null
+    }
 
-    fun signOut(onSignedOut: () -> Unit) {
-        viewModelScope.launch {
-            // FirebaseAuth.getInstance().signOut()
-            // GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut().await()
-            _state.update { it.copy(showSignOutDialog = false) }
-            onSignedOut()
-        }
+    fun showSignOutDialog() { _showSignOutDialog.value = true }
+    fun dismissSignOutDialog() { _showSignOutDialog.value = false }
+
+    fun signOut() {
+        viewModelScope.launch { authRepository.signOut() }
     }
 }
-
