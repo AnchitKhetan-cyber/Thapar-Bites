@@ -5,80 +5,111 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
-/**
- * Builds a [GoogleSignInClient].
- *
- * Replace [webClientId] with the OAuth 2.0 Web Client ID from:
- * Firebase Console → Project Settings → Your apps → google-services.json
- * Use the "Web" client ID, NOT the Android client ID.
- */
-fun buildGoogleSignInClient(context: Context, webClientId: String): GoogleSignInClient {
-    val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        .requestIdToken(webClientId)
-        .requestEmail()
-        .build()
-    return GoogleSignIn.getClient(context, options)
-}
+class GoogleSignInHelper(private val context: Context) {
 
-/**
- * Returns a lambda that launches the Google Sign-In flow.
- *
- * FIX: Calls [googleSignInClient].signOut() before launching the intent.
- *
- * Without this, returning users skip the account picker entirely because
- * Google silently reuses the cached signed-in account. The app then hangs
- * waiting for a Firebase credential exchange that was never triggered
- * visibly — making sign-in feel broken or very slow.
- *
- * signOut() clears the cached account so the picker always appears,
- * giving a consistent, predictable UX.
- *
- * Usage in LoginScreen:
- *
- *   val launchGoogleSignIn = rememberGoogleSignInLauncher(
- *       googleSignInClient = googleClient,
- *       onToken = { token -> viewModel.loginWithGoogle(onLoginSuccess, idToken = token) },
- *       onFailed = { viewModel.onGoogleSignInFailed() }
- *   )
- *
- *   OutlinedButton(onClick = launchGoogleSignIn) { ... }
- */
-@Composable
-fun rememberGoogleSignInLauncher(
-    googleSignInClient: GoogleSignInClient,
-    onToken: (String) -> Unit,
-    onFailed: () -> Unit
-): () -> Unit {
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val idToken = account?.idToken
-            if (idToken != null) {
-                onToken(idToken)
+    // CredentialManager is the new unified API for all credential types
+    // (passwords, passkeys, federated identity like Google).
+    private val credentialManager = CredentialManager.create(context)
+
+    // Sealed class so callers can pattern-match the result cleanly
+    sealed class GoogleSignInResult {
+        data class Success(val idToken: String) : GoogleSignInResult()
+        data class Error(val message: String)   : GoogleSignInResult()
+        object Cancelled                         : GoogleSignInResult()
+    }
+
+    suspend fun signIn(): GoogleSignInResult {
+        return try {
+            // GetGoogleIdOption configures what we request from Google.
+            val googleIdOption = GetGoogleIdOption.Builder()
+                // Your Web Client ID from google-services.json
+                // This is auto-generated — find it in R.string.default_web_client_id
+                .setServerClientId(context.getString(com.ccs.thaparbites.R.string.default_web_client_id))
+
+                // Show ALL accounts, not just previously authorized ones.
+                .setFilterByAuthorizedAccounts(false)
+
+                // Always show the picker — never auto-select.
+                .setAutoSelectEnabled(false)
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            // launch() suspends until the user picks an account or dismisses.
+            // Must be called from an Activity context — hence we need the Activity.
+            val result = credentialManager.getCredential(
+                request = request,
+                context = context
+            )
+
+            // result.credential can be of different types (password, passkey, google, etc.)
+            // We only care about GoogleIdTokenCredential.
+            val credential = result.credential
+            if (credential is CustomCredential &&
+                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            ) {
+                // Parse the credential into a GoogleIdTokenCredential object
+                val googleCred = GoogleIdTokenCredential.createFrom(credential.data)
+                // idToken is the JWT we pass to Firebase
+                GoogleSignInResult.Success(googleCred.idToken)
             } else {
-                onFailed()
+                GoogleSignInResult.Error("Unexpected credential type")
             }
-        } catch (e: ApiException) {
-            onFailed()
+
+        } catch (e: GetCredentialCancellationException) {
+            // User pressed back or dismissed the picker — not an error, just cancelled
+            GoogleSignInResult.Cancelled
+
+        } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+            // No previously authorized accounts found.
+            // Fall back to showing ALL Google accounts on the device.
+            signInWithAllAccounts()
+
+        } catch (e: Exception) {
+            GoogleSignInResult.Error(e.localizedMessage ?: "Google Sign-In failed")
         }
     }
 
-    // FIX: signOut() before launching so the account picker always shows.
-    // Intent is created inside the lambda (call-time), not at remember-time,
-    // so it always reflects the post-signOut state.
-    return remember(launcher, googleSignInClient) {
-        {
-            googleSignInClient.signOut().addOnCompleteListener {
-                launcher.launch(googleSignInClient.signInIntent)
+    // Fallback: show all Google accounts (for first-time users)
+    private suspend fun signInWithAllAccounts(): GoogleSignInResult {
+        return try {
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setServerClientId(context.getString(com.ccs.thaparbites.R.string.default_web_client_id))
+                .setFilterByAuthorizedAccounts(false)  // ← show ALL accounts
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            val result = credentialManager.getCredential(request = request, context = context)
+            val credential = result.credential
+
+            if (credential is CustomCredential &&
+                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            ) {
+                val googleCred = GoogleIdTokenCredential.createFrom(credential.data)
+                GoogleSignInResult.Success(googleCred.idToken)
+            } else {
+                GoogleSignInResult.Error("Unexpected credential type")
             }
+        } catch (e: GetCredentialCancellationException) {
+            GoogleSignInResult.Cancelled
+        } catch (e: Exception) {
+            GoogleSignInResult.Error(e.localizedMessage ?: "Google Sign-In failed")
         }
     }
 }

@@ -30,7 +30,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.R
 import kotlinx.coroutines.delay
@@ -40,14 +39,14 @@ import kotlinx.coroutines.launch
 fun SplashScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
-    viewModel: SplashViewModel = hiltViewModel()
+    viewModel: SplashViewModel = viewModel(factory = SplashViewModel.Factory())
 ) {
     val destination by viewModel.destination.collectAsState()
 
     LaunchedEffect(destination) {
         when (destination) {
             SplashDestination.Login -> onNavigateToLogin()
-            SplashDestination.Home -> onNavigateToHome()
+            SplashDestination.Home  -> onNavigateToHome()
             SplashDestination.Loading -> Unit
         }
     }
@@ -57,7 +56,6 @@ fun SplashScreen(
 
 @Composable
 fun SplashContent() {
-
     val isDark = isSystemInDarkTheme()
 
     val logoScale = remember { Animatable(0.75f) }
@@ -65,14 +63,12 @@ fun SplashContent() {
     val taglineAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-
         launch {
             logoAlpha.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(700)
             )
         }
-
         launch {
             logoScale.animateTo(
                 targetValue = 1f,
@@ -82,9 +78,7 @@ fun SplashContent() {
                 )
             )
         }
-
         delay(800)
-
         taglineAlpha.animateTo(
             targetValue = 1f,
             animationSpec = tween(500)
@@ -102,13 +96,10 @@ fun SplashContent() {
             ),
         contentAlignment = Alignment.Center
     ) {
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    alpha = 0.15f
-                }
+                .graphicsLayer { alpha = 0.15f }
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
@@ -124,7 +115,6 @@ fun SplashContent() {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(24.dp)
         ) {
-
             Image(
                 painter = painterResource(id = R.drawable.thapar_bites_logo),
                 contentDescription = "Thapar Bites Logo",

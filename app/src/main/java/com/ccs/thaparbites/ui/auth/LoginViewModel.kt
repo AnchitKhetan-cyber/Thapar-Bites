@@ -1,19 +1,21 @@
 package com.ccs.thaparbites.ui.auth
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.ccs.thaparbites.data.repository.AuthRepository
+import com.ccs.thaparbites.data.repository.AuthRepositoryImpl
+import com.ccs.thaparbites.data.repository.AuthResult
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
-// ─────────────────────────────────────────────
-//  UI State
-// ─────────────────────────────────────────────
+// ── UI State ──────────────────────────────────────────────────────────────────
 
 enum class LoadingSource { EMAIL, GOOGLE }
 
@@ -24,23 +26,31 @@ data class LoginUiState(
     val passwordError: String? = null,
     val generalError: String? = null,
     val isLoading: Boolean = false,
-    val loadingSource: LoadingSource? = null
+    val loadingSource: LoadingSource? = null,
+    val passwordVisible: Boolean = false
 )
 
-// ─────────────────────────────────────────────
-//  ViewModel
-// ─────────────────────────────────────────────
+// ── One-shot events (same Channel pattern as Humble Contacts) ─────────────────
 
-class LoginViewModel : ViewModel() {
+sealed class LoginEvent {
+    object NavigateToHome     : LoginEvent()
+    object LaunchGoogleSignIn : LoginEvent()
+    data class ShowSnackbar(val message: String) : LoginEvent()
+}
 
-    // FIX 1: lazy init — FirebaseAuth.getInstance() is no longer called
-    // during ViewModel construction, avoiding blocking the main thread.
-    private val auth by lazy { FirebaseAuth.getInstance() }
+// ── ViewModel ─────────────────────────────────────────────────────────────────
+
+class LoginViewModel(
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    // ── Input handlers ────────────────────────
+    private val _events = Channel<LoginEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    // ── Input handlers ────────────────────────────────────────────────────────
 
     fun onEmailChange(value: String) {
         _uiState.update { it.copy(email = value, emailError = null, generalError = null) }
@@ -50,7 +60,15 @@ class LoginViewModel : ViewModel() {
         _uiState.update { it.copy(password = value, passwordError = null, generalError = null) }
     }
 
-    // ── Validation ────────────────────────────
+    fun togglePasswordVisibility() {
+        _uiState.update { it.copy(passwordVisible = !it.passwordVisible) }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(generalError = null) }
+    }
+
+    // ── Validation ────────────────────────────────────────────────────────────
 
     private fun validateEmail(email: String): String? {
         if (email.isBlank()) return "Email is required"
@@ -64,11 +82,11 @@ class LoginViewModel : ViewModel() {
         return null
     }
 
-    // ── Email/Password Login ──────────────────
+    // ── Email Login ───────────────────────────────────────────────────────────
 
-    fun loginWithEmail(onSuccess: () -> Unit) {
+    fun loginWithEmail() {
         val state = _uiState.value
-        val emailError = validateEmail(state.email)
+        val emailError = validateEmail(state.email.trim())
         val passwordError = validatePassword(state.password)
 
         if (emailError != null || passwordError != null) {
@@ -78,97 +96,56 @@ class LoginViewModel : ViewModel() {
 
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    loadingSource = LoadingSource.EMAIL,
-                    generalError = null
-                )
+                it.copy(isLoading = true, loadingSource = LoadingSource.EMAIL, generalError = null)
             }
-            try {
-                auth.signInWithEmailAndPassword(state.email.trim(), state.password).await()
-                onSuccess()
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        loadingSource = null,
-                        generalError = mapFirebaseError(e.message)
-                    )
-                }
+
+            val result = authRepository.signInWithEmail(state.email.trim(), state.password)
+            _uiState.update { it.copy(isLoading = false, loadingSource = null) }
+
+            when (result) {
+                is AuthResult.Success -> _events.send(LoginEvent.NavigateToHome)
+                is AuthResult.Error   -> _uiState.update { it.copy(generalError = result.message) }
+                else                  -> Unit
             }
         }
     }
 
-    // ── Google Sign-In ────────────────────────
-    // FIX 2: No longer sets isLoading when idToken is null.
-    // Previously, returning null early left the loading spinner stuck forever
-    // if the user cancelled the Google account picker.
-    // Now loading only starts once we actually have a token to exchange.
+    // ── Google Sign-In ────────────────────────────────────────────────────────
 
-    fun loginWithGoogle(onSuccess: () -> Unit, idToken: String? = null) {
-        if (idToken == null) {
-            // Signal UI to launch Google Sign-In launcher — do NOT touch loading state here.
-            // The launcher will call back with a token (or call onGoogleSignInFailed).
-            return
+    fun onGoogleSignInClicked() {
+        viewModelScope.launch {
+            _events.send(LoginEvent.LaunchGoogleSignIn)
         }
+    }
 
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
+    fun onGoogleIdToken(idToken: String) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    loadingSource = LoadingSource.GOOGLE,
-                    generalError = null
-                )
+                it.copy(isLoading = true, loadingSource = LoadingSource.GOOGLE, generalError = null)
             }
-            try {
-                val result = auth.signInWithCredential(credential).await()
-                val email = result.user?.email.orEmpty()
-                if (!email.endsWith("@thapar.edu")) {
-                    auth.signOut()
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            loadingSource = null,
-                            generalError = "Only @thapar.edu Google accounts are allowed"
-                        )
-                    }
-                } else {
-                    onSuccess()
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        loadingSource = null,
-                        generalError = mapFirebaseError(e.message)
-                    )
-                }
+
+            val result = authRepository.signInWithGoogle(idToken)
+            _uiState.update { it.copy(isLoading = false, loadingSource = null) }
+
+            when (result) {
+                is AuthResult.Success -> _events.send(LoginEvent.NavigateToHome)
+                is AuthResult.Error   -> _uiState.update { it.copy(generalError = result.message) }
+                else                  -> Unit
             }
         }
     }
 
-    fun onGoogleSignInFailed() {
-        _uiState.update {
-            it.copy(
-                isLoading = false,
-                loadingSource = null,
-                generalError = "Google Sign-In failed. Try again."
-            )
-        }
+    fun onGoogleSignInError(message: String) {
+        _uiState.update { it.copy(isLoading = false, loadingSource = null, generalError = message) }
     }
 
-    // ── Error mapping ─────────────────────────
+    // ── Factory ───────────────────────────────────────────────────────────────
 
-    private fun mapFirebaseError(message: String?): String {
-        return when {
-            message == null -> "Something went wrong. Please try again."
-            "no user record" in message.lowercase() -> "No account found with this email."
-            "password is invalid" in message.lowercase() -> "Incorrect password."
-            "badly formatted" in message.lowercase() -> "Invalid email address."
-            "network" in message.lowercase() -> "Network error. Check your connection."
-            "blocked" in message.lowercase() -> "Too many attempts. Try again later."
-            else -> "Sign-in failed. Please try again."
+    class Factory : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            val auth = AuthRepositoryImpl(FirebaseAuth.getInstance())
+            return LoginViewModel(auth) as T
         }
     }
 }

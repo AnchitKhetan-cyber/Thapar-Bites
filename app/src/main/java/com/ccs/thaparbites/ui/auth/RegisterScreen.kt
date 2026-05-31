@@ -25,12 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.ui.theme.*
 
-// ─────────────────────────────────────────────
-//  FIX: Hostel list moved to top-level constant.
-//  Previously declared inside HostelDropdown composable,
-//  which created a new List object on every recomposition.
-// ─────────────────────────────────────────────
-
 private val HOSTELS = listOf(
     "Kailash Boys Hostel",
     "Himachal Boys Hostel",
@@ -51,9 +45,19 @@ private val HOSTELS = listOf(
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit,
-    viewModel: RegisterViewModel = viewModel()
+    viewModel: RegisterViewModel = viewModel(factory = RegisterViewModel.Factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // One-shot event collector — same Channel pattern as Humble Contacts
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is RegisterEvent.NavigateToHome -> onRegisterSuccess()
+                else -> Unit
+            }
+        }
+    }
 
     RegisterContent(
         uiState = uiState,
@@ -63,7 +67,9 @@ fun RegisterScreen(
         onHostelChange = viewModel::onHostelChange,
         onPasswordChange = viewModel::onPasswordChange,
         onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
-        onRegisterClick = { viewModel.register(onRegisterSuccess) },
+        onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
+        onToggleConfirmVisibility = viewModel::toggleConfirmPasswordVisibility,
+        onRegisterClick = viewModel::register,
         onNavigateToLogin = onNavigateToLogin
     )
 }
@@ -81,12 +87,12 @@ fun RegisterContent(
     onHostelChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
+    onTogglePasswordVisibility: () -> Unit = {},
+    onToggleConfirmVisibility: () -> Unit = {},
     onRegisterClick: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -256,9 +262,9 @@ fun RegisterContent(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
-                                    imageVector = if (passwordVisible)
+                                    imageVector = if (uiState.passwordVisible)
                                         Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
                                     contentDescription = null,
@@ -266,7 +272,7 @@ fun RegisterContent(
                                 )
                             }
                         },
-                        visualTransformation = if (passwordVisible)
+                        visualTransformation = if (uiState.passwordVisible)
                             VisualTransformation.None
                         else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
@@ -323,11 +329,9 @@ fun RegisterContent(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
-                                IconButton(
-                                    onClick = { confirmPasswordVisible = !confirmPasswordVisible }
-                                ) {
+                                IconButton(onClick = onToggleConfirmVisibility) {
                                     Icon(
-                                        imageVector = if (confirmPasswordVisible)
+                                        imageVector = if (uiState.confirmPasswordVisible)
                                             Icons.Default.VisibilityOff
                                         else Icons.Default.Visibility,
                                         contentDescription = null,
@@ -336,7 +340,7 @@ fun RegisterContent(
                                 }
                             }
                         },
-                        visualTransformation = if (confirmPasswordVisible)
+                        visualTransformation = if (uiState.confirmPasswordVisible)
                             VisualTransformation.None
                         else PasswordVisualTransformation(),
                         isError = uiState.confirmPasswordError != null,
@@ -485,7 +489,6 @@ private fun HostelDropdown(
     onHostelSelected: (String) -> Unit,
     error: String?
 ) {
-    // FIX: Uses top-level HOSTELS constant — no allocation on recomposition.
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -558,43 +561,6 @@ private fun RegisterPreviewLight() {
     ThaparBitesTheme(darkTheme = false) {
         RegisterContent(
             uiState = RegisterUiState(),
-            onNameChange = {}, onEmailChange = {}, onPhoneChange = {},
-            onHostelChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
-            onRegisterClick = {}, onNavigateToLogin = {}
-        )
-    }
-}
-
-@Preview(
-    showBackground = true,
-    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
-    name = "Register – Dark"
-)
-@Composable
-private fun RegisterPreviewDark() {
-    ThaparBitesTheme(darkTheme = true) {
-        RegisterContent(
-            uiState = RegisterUiState(),
-            onNameChange = {}, onEmailChange = {}, onPhoneChange = {},
-            onHostelChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
-            onRegisterClick = {}, onNavigateToLogin = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Register – Filled")
-@Composable
-private fun RegisterPreviewFilled() {
-    ThaparBitesTheme(darkTheme = false) {
-        RegisterContent(
-            uiState = RegisterUiState(
-                name = "Arjun Sharma",
-                email = "arjun@thapar.edu",
-                phone = "9876543210",
-                hostelName = "Kailash Boys Hostel",
-                password = "mypassword",
-                confirmPassword = "mypassword"
-            ),
             onNameChange = {}, onEmailChange = {}, onPhoneChange = {},
             onHostelChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
             onRegisterClick = {}, onNavigateToLogin = {}

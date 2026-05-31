@@ -1,5 +1,6 @@
 package com.ccs.thaparbites.ui.auth
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -19,10 +20,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,8 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ccs.thaparbites.R
 import com.ccs.thaparbites.ui.theme.*
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────
 //  Screen
@@ -43,32 +42,47 @@ import com.ccs.thaparbites.ui.theme.*
 fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
-    viewModel: LoginViewModel = viewModel()
+    viewModel: LoginViewModel = viewModel(factory = LoginViewModel.Factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // FIX: Build GoogleSignInClient once, not on every recomposition.
-    val googleClient = remember(context) {
-        buildGoogleSignInClient(context, webClientId = "YOUR_WEB_CLIENT_ID_HERE")
-    }
+    // One-shot event collector — same pattern as Humble Contacts
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is LoginEvent.NavigateToHome -> onLoginSuccess()
 
-    // FIX: Launcher calls signOut() first so the account picker always appears.
-    // Previously a cached token was silently reused, making sign-in feel "instant"
-    // but then hanging on the Firebase credential exchange.
-    val launchGoogleSignIn = rememberGoogleSignInLauncher(
-        googleSignInClient = googleClient,
-        onToken = { token -> viewModel.loginWithGoogle(onLoginSuccess, idToken = token) },
-        onFailed = { viewModel.onGoogleSignInFailed() }
-    )
+                is LoginEvent.LaunchGoogleSignIn -> {
+                    // Launch in a child coroutine so the collector is not blocked
+                    launch {
+                        val activity = context as? Activity ?: return@launch
+
+                        // Use Credential-Manager-based helper from Humble Contacts
+                        val helper = GoogleSignInHelper(activity)
+                        when (val result = helper.signIn()) {
+                            is GoogleSignInHelper.GoogleSignInResult.Success ->
+                                viewModel.onGoogleIdToken(result.idToken)
+                            is GoogleSignInHelper.GoogleSignInResult.Error ->
+                                viewModel.onGoogleSignInError(result.message)
+                            is GoogleSignInHelper.GoogleSignInResult.Cancelled -> Unit
+                        }
+                    }
+                }
+
+                else -> Unit
+            }
+        }
+    }
 
     LoginContent(
         uiState = uiState,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
-        onLoginClick = { viewModel.loginWithEmail(onLoginSuccess) },
-        onGoogleSignInClick = launchGoogleSignIn,
-        onNavigateToRegister = onNavigateToRegister
+        onLoginClick = viewModel::loginWithEmail,
+        onGoogleSignInClick = viewModel::onGoogleSignInClicked,
+        onNavigateToRegister = onNavigateToRegister,
+        onTogglePasswordVisibility = viewModel::togglePasswordVisibility
     )
 }
 
@@ -83,14 +97,10 @@ fun LoginContent(
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onTogglePasswordVisibility: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    // FIX: Removed unused animateFloatAsState calls for alpha and slideY.
-    // They were declared but never applied to any Modifier, causing wasted
-    // recomposition work on every frame during screen entry.
 
     Box(
         modifier = Modifier
@@ -216,18 +226,18 @@ fun LoginContent(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
-                                    imageVector = if (passwordVisible)
+                                    imageVector = if (uiState.passwordVisible)
                                         Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
-                                    contentDescription = if (passwordVisible)
+                                    contentDescription = if (uiState.passwordVisible)
                                         "Hide password" else "Show password",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         },
-                        visualTransformation = if (passwordVisible)
+                        visualTransformation = if (uiState.passwordVisible)
                             VisualTransformation.None
                         else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
@@ -255,7 +265,7 @@ fun LoginContent(
                         colors = authTextFieldColors()
                     )
 
-                    // Global error
+                    // Global error banner
                     AnimatedVisibility(visible = uiState.generalError != null) {
                         uiState.generalError?.let { error ->
                             ErrorBanner(message = error)
@@ -374,7 +384,7 @@ fun LoginContent(
 // ─────────────────────────────────────────────
 
 @Composable
-private fun BrandHeader() {
+internal fun BrandHeader() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -415,7 +425,7 @@ private fun BrandHeader() {
 
 /** Google "G" mark drawn with Canvas — no drawable needed */
 @Composable
-private fun GoogleLogo(modifier: Modifier = Modifier) {
+internal fun GoogleLogo(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val s = size.minDimension
         drawArc(
@@ -509,22 +519,6 @@ private fun LoginPreviewDark() {
     ThaparBitesTheme(darkTheme = true) {
         LoginContent(
             uiState = LoginUiState(),
-            onEmailChange = {}, onPasswordChange = {},
-            onLoginClick = {}, onGoogleSignInClick = {}, onNavigateToRegister = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Login – Error State")
-@Composable
-private fun LoginPreviewError() {
-    ThaparBitesTheme(darkTheme = false) {
-        LoginContent(
-            uiState = LoginUiState(
-                email = "student@gmail.com",
-                emailError = "Only @thapar.edu emails are allowed",
-                generalError = "Sign-in failed. Please try again."
-            ),
             onEmailChange = {}, onPasswordChange = {},
             onLoginClick = {}, onGoogleSignInClick = {}, onNavigateToRegister = {}
         )

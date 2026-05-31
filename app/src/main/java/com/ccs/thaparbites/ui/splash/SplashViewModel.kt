@@ -1,23 +1,23 @@
 package com.ccs.thaparbites.ui.splash
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ccs.thaparbites.data.repository.AuthRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.ccs.thaparbites.data.repository.AuthRepositoryImpl
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed class SplashDestination {
     object Loading : SplashDestination()
-    object Login : SplashDestination()
-    object Home : SplashDestination()
+    object Login   : SplashDestination()
+    object Home    : SplashDestination()
 }
 
-@HiltViewModel
-class SplashViewModel @Inject constructor(
+class SplashViewModel(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -31,6 +31,14 @@ class SplashViewModel @Inject constructor(
                 SplashDestination.Home
             else
                 SplashDestination.Login
+        }
+    }
+
+    class Factory : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            val repo = AuthRepositoryImpl(FirebaseAuth.getInstance())
+            return SplashViewModel(repo) as T
         }
     }
 }

@@ -100,6 +100,8 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+
 }
 
 kapt {
