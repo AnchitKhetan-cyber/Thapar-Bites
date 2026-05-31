@@ -1,4 +1,4 @@
-git --versionpackage com.ccs.thaparbites.ui.checkout
+package com.ccs.thaparbites.ui.checkout
 
 import android.content.Context
 import android.content.Intent
