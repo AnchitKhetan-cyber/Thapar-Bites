@@ -14,18 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -55,7 +50,7 @@ import com.ccs.thaparbites.ui.theme.Crimson500
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
 import com.ccs.thaparbites.ui.theme.extendedColors
 import java.text.SimpleDateFormat
-import java.util.Locale
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,10 +78,10 @@ fun OrdersScreen(
         bottomBar = {
             HomeBottomBar(
                 currentRoute = "ORDERS",
-                onHome = onNavigateHome,
-                onOrders = {},
-                onCart = onNavigateCart,
-                onProfile = onNavigateProfile
+                onHomeClick = onNavigateHome,
+                onOrdersClick = {},
+                onCartClick = onNavigateCart,
+                onProfileClick = onNavigateProfile
             )
         }
     ) { padding ->
@@ -167,7 +162,7 @@ fun OrdersScreen(
 
 @Composable
 private fun OrderRow(order: Order, onClick: () -> Unit) {
-    val dateFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM, hh:mm a", LocalLocale.current.platformLocale)
 
     Surface(
         modifier = Modifier
@@ -257,6 +252,8 @@ fun OrderStatusChip(status: OrderStatus) {
             MaterialTheme.colorScheme.onErrorContainer,
             "Cancelled"
         )
+
+        OrderStatus.CONFIRMED -> TODO()
     }
 
     Surface(
@@ -277,7 +274,7 @@ fun OrderStatusChip(status: OrderStatus) {
 
 @Composable
 private fun OrderDetailSheet(order: Order) {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", LocalLocale.current.platformLocale)
 
     Column(
         modifier = Modifier

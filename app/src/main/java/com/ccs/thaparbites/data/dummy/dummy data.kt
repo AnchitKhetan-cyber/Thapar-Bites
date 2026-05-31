@@ -1,11 +1,13 @@
 package com.ccs.thaparbites.data.dummy
 
+import java.util.Date
+
 // ─────────────────────────────────────────────
 //  Data Models
 // ─────────────────────────────────────────────
 
 enum class StoreStatus { OPEN, CLOSED, BUSY }
-enum class PaymentMethod { UPI, UPI_AND_CASH }
+enum class PaymentMethod { CASH, UPI }  // match repository exactly
 enum class OrderStatus { PLACED, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED }
 
 data class Store(
@@ -19,7 +21,8 @@ data class Store(
     val etaMinutes: Int,
     val paymentMethod: PaymentMethod,
     val timings: String,
-    val emoji: String          // used as avatar placeholder
+    val emoji: String ,         // used as avatar placeholder
+    val upiId: String = ""
 )
 
 data class MenuItem(
@@ -44,18 +47,20 @@ data class Order(
     val storeName: String,
     val storeEmoji: String,
     val items: List<CartItem>,
-    val total: Int,
+    val subtotal: Double,
+    val deliveryFee: Double,
+    val total: Double,
     val status: OrderStatus,
-    val placedAt: String,
     val paymentMethod: PaymentMethod,
-    val estimatedTime: String
+    val placedAt: Date
 )
 
 data class UserProfile(
-    val name: String,
-    val email: String,
-    val phone: String,
-    val hostelName: String
+    val uid: String = "",
+    val name: String ="",
+    val email: String = "",
+    val phone: String = "",
+    val hostelName: String = ""
 )
 
 // ─────────────────────────────────────────────
@@ -69,16 +74,16 @@ val campusLocations = listOf("COS", "Kravings", "G-Block", "Aahar", "TSLAS")
 // ─────────────────────────────────────────────
 
 val dummyStores = listOf(
-    Store("s1","Chai Point","COS","Freshly brewed chai, snacks & more",4.5f,210,StoreStatus.OPEN,8,PaymentMethod.UPI_AND_CASH,"8 AM – 10 PM","☕"),
-    Store("s2","Burger Barn","COS","Juicy burgers, fries & shakes",4.2f,187,StoreStatus.BUSY,18,PaymentMethod.UPI_AND_CASH,"10 AM – 11 PM","🍔"),
-    Store("s3","The Wrap Co.","COS","Rolls, wraps & kathi rolls",4.0f,95,StoreStatus.OPEN,12,PaymentMethod.UPI_ONLY,"9 AM – 9 PM","🌯"),
-    Store("s4","Punjabi Dhaba","Kravings","Authentic Punjabi home-style food",4.7f,340,StoreStatus.OPEN,20,PaymentMethod.UPI_AND_CASH,"12 PM – 10 PM","🍛"),
-    Store("s5","Pizza Stop","Kravings","Wood-fired pizzas & garlic bread",4.1f,155,StoreStatus.CLOSED,0,PaymentMethod.UPI_ONLY,"11 AM – 11 PM","🍕"),
-    Store("s6","Momos Corner","Kravings","Steamed, fried & tandoori momos",4.6f,422,StoreStatus.OPEN,10,PaymentMethod.UPI_AND_CASH,"11 AM – 10 PM","🥟"),
-    Store("s7","Juice Junction","G-Block","Fresh fruit juices & smoothies",4.3f,130,StoreStatus.OPEN,6,PaymentMethod.UPI_ONLY,"8 AM – 8 PM","🥤"),
-    Store("s8","Noodle House","G-Block","Noodles, fried rice & Hakka specialties",3.9f,88,StoreStatus.BUSY,22,PaymentMethod.UPI_AND_CASH,"11 AM – 10 PM","🍜"),
-    Store("s9","Aahar Cafeteria","Aahar","Daily thali & comfort food",4.4f,510,StoreStatus.OPEN,15,PaymentMethod.UPI_AND_CASH,"7 AM – 10 PM","🍱"),
-    Store("s10","Sandwich Studio","TSLAS","Loaded sandwiches & toasties",4.0f,67,StoreStatus.OPEN,9,PaymentMethod.UPI_ONLY,"8 AM – 8 PM","🥪")
+    Store("s1","Chai Point","COS","Freshly brewed chai, snacks & more",4.5f,210,StoreStatus.OPEN,8,PaymentMethod.CASH,"8 AM – 10 PM","☕"),
+    Store("s2","Burger Barn","COS","Juicy burgers, fries & shakes",4.2f,187,StoreStatus.BUSY,18,PaymentMethod.CASH,"10 AM – 11 PM","🍔"),
+    Store("s3","The Wrap Co.","COS","Rolls, wraps & kathi rolls",4.0f,95,StoreStatus.OPEN,12,PaymentMethod.UPI,"9 AM – 9 PM","🌯"),
+    Store("s4","Punjabi Dhaba","Kravings","Authentic Punjabi home-style food",4.7f,340,StoreStatus.OPEN,20,PaymentMethod.CASH,"12 PM – 10 PM","🍛"),
+    Store("s5","Pizza Stop","Kravings","Wood-fired pizzas & garlic bread",4.1f,155,StoreStatus.CLOSED,0,PaymentMethod.UPI,"11 AM – 11 PM","🍕"),
+    Store("s6","Momos Corner","Kravings","Steamed, fried & tandoori momos",4.6f,422,StoreStatus.OPEN,10,PaymentMethod.CASH,"11 AM – 10 PM","🥟"),
+    Store("s7","Juice Junction","G-Block","Fresh fruit juices & smoothies",4.3f,130,StoreStatus.OPEN,6,PaymentMethod.UPI,"8 AM – 8 PM","🥤"),
+    Store("s8","Noodle House","G-Block","Noodles, fried rice & Hakka specialties",3.9f,88,StoreStatus.BUSY,22,PaymentMethod.CASH,"11 AM – 10 PM","🍜"),
+    Store("s9","Aahar Cafeteria","Aahar","Daily thali & comfort food",4.4f,510,StoreStatus.OPEN,15,PaymentMethod.CASH,"7 AM – 10 PM","🍱"),
+    Store("s10","Sandwich Studio","TSLAS","Loaded sandwiches & toasties",4.0f,67,StoreStatus.OPEN,9,PaymentMethod.UPI,"8 AM – 8 PM","🥪")
 )
 
 // ─────────────────────────────────────────────
@@ -127,38 +132,35 @@ val dummyMenuItems = listOf(
 val dummyOrders = listOf(
     Order(
         id = "ORD-2031", storeName = "Momos Corner", storeEmoji = "🥟",
-        items = listOf(
-            CartItem(dummyMenuItems[10], 2),
-            CartItem(dummyMenuItems[13], 1)
-        ),
-        total = 170, status = OrderStatus.DELIVERED,
-        placedAt = "Today, 1:15 PM", paymentMethod = PaymentMethod.UPI_AND_CASH,
-        estimatedTime = "10 min"
+        items = listOf(CartItem(dummyMenuItems[10], 2), CartItem(dummyMenuItems[13], 1)),
+        subtotal = 160.0, deliveryFee = 10.0, total = 170.0,
+        status = OrderStatus.DELIVERED,
+        paymentMethod = PaymentMethod.UPI,
+        placedAt = Date()
     ),
     Order(
         id = "ORD-2030", storeName = "Burger Barn", storeEmoji = "🍔",
-        items = listOf(
-            CartItem(dummyMenuItems[6], 1),
-            CartItem(dummyMenuItems[7], 1),
-            CartItem(dummyMenuItems[8], 1)
-        ),
-        total = 320, status = OrderStatus.DELIVERED,
-        placedAt = "Yesterday, 7:40 PM", paymentMethod = PaymentMethod.UPI_AND_CASH,
-        estimatedTime = "18 min"
+        items = listOf(CartItem(dummyMenuItems[6], 1), CartItem(dummyMenuItems[7], 1), CartItem(dummyMenuItems[8], 1)),
+        subtotal = 310.0, deliveryFee = 10.0, total = 320.0,
+        status = OrderStatus.DELIVERED,
+        paymentMethod = PaymentMethod.UPI,
+        placedAt = Date(System.currentTimeMillis() - 86_400_000)
     ),
     Order(
         id = "ORD-2029", storeName = "Chai Point", storeEmoji = "☕",
         items = listOf(CartItem(dummyMenuItems[0], 2), CartItem(dummyMenuItems[2], 1)),
-        total = 50, status = OrderStatus.DELIVERED,
-        placedAt = "23 May, 9:00 AM", paymentMethod = PaymentMethod.UPI_AND_CASH,
-        estimatedTime = "8 min"
+        subtotal = 40.0, deliveryFee = 10.0, total = 50.0,
+        status = OrderStatus.DELIVERED,
+        paymentMethod = PaymentMethod.CASH,
+        placedAt = Date(System.currentTimeMillis() - 7 * 86_400_000)
     ),
     Order(
         id = "ORD-2028", storeName = "Punjabi Dhaba", storeEmoji = "🍛",
         items = listOf(CartItem(dummyMenuItems[17], 1), CartItem(dummyMenuItems[16], 2)),
-        total = 210, status = OrderStatus.CANCELLED,
-        placedAt = "20 May, 1:00 PM", paymentMethod = PaymentMethod.UPI_ONLY,
-        estimatedTime = "20 min"
+        subtotal = 200.0, deliveryFee = 10.0, total = 210.0,
+        status = OrderStatus.CANCELLED,
+        paymentMethod = PaymentMethod.UPI,
+        placedAt = Date(System.currentTimeMillis() - 11 * 86_400_000)
     )
 )
 

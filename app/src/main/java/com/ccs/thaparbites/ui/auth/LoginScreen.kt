@@ -1,7 +1,6 @@
 package com.ccs.thaparbites.ui.auth
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +20,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,13 +46,28 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // FIX: Build GoogleSignInClient once, not on every recomposition.
+    val googleClient = remember(context) {
+        buildGoogleSignInClient(context, webClientId = "YOUR_WEB_CLIENT_ID_HERE")
+    }
+
+    // FIX: Launcher calls signOut() first so the account picker always appears.
+    // Previously a cached token was silently reused, making sign-in feel "instant"
+    // but then hanging on the Firebase credential exchange.
+    val launchGoogleSignIn = rememberGoogleSignInLauncher(
+        googleSignInClient = googleClient,
+        onToken = { token -> viewModel.loginWithGoogle(onLoginSuccess, idToken = token) },
+        onFailed = { viewModel.onGoogleSignInFailed() }
+    )
 
     LoginContent(
         uiState = uiState,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onLoginClick = { viewModel.loginWithEmail(onLoginSuccess) },
-        onGoogleSignInClick = { viewModel.loginWithGoogle(onLoginSuccess) },
+        onGoogleSignInClick = launchGoogleSignIn,
         onNavigateToRegister = onNavigateToRegister
     )
 }
@@ -73,27 +87,21 @@ fun LoginContent(
 ) {
     val focusManager = LocalFocusManager.current
     var passwordVisible by remember { mutableStateOf(false) }
-    val ext = MaterialTheme.extendedColors
 
-    // Entry animation
-    val alpha by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = 600, easing = EaseOutCubic),
-        label = "screenAlpha"
-    )
-    val slideY by animateFloatAsState(
-        targetValue = 0f,
-        animationSpec = tween(durationMillis = 600, easing = EaseOutCubic),
-        label = "screenSlide"
-    )
+    // FIX: Removed unused animateFloatAsState calls for alpha and slideY.
+    // They were declared but never applied to any Modifier, causing wasted
+    // recomposition work on every frame during screen entry.
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Crimson arc decoration at top (matches splash aesthetic)
-        Canvas(modifier = Modifier.fillMaxWidth().height(260.dp)) {
+        // Crimson arc decoration at top
+        Canvas(modifier = Modifier
+            .fillMaxWidth()
+            .height(260.dp)
+        ) {
             drawArc(
                 brush = Brush.verticalGradient(
                     colors = listOf(Crimson500, Crimson600)
@@ -101,8 +109,14 @@ fun LoginContent(
                 startAngle = 0f,
                 sweepAngle = 180f,
                 useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, -size.height * 0.4f),
-                size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 1.8f)
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    -size.width * 0.1f,
+                    -size.height * 0.4f
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    size.width * 1.2f,
+                    size.height * 1.8f
+                )
             )
         }
 
@@ -317,7 +331,6 @@ fun LoginContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                // Google "G" logo drawn with Canvas
                                 GoogleLogo(modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -363,7 +376,6 @@ fun LoginContent(
 @Composable
 private fun BrandHeader() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Circular logo badge
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -371,7 +383,6 @@ private fun BrandHeader() {
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
-            // "ti" wordmark using Text (replace with Image(painterResource) if you have the actual logo asset)
             Text(
                 text = "ti",
                 style = MaterialTheme.typography.headlineLarge,
@@ -402,12 +413,11 @@ private fun BrandHeader() {
     }
 }
 
-/** Simple Google "G" mark drawn with Canvas — no drawable needed */
+/** Google "G" mark drawn with Canvas — no drawable needed */
 @Composable
 private fun GoogleLogo(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val s = size.minDimension
-        // Blue arc (top-right)
         drawArc(
             color = Color(0xFF4285F4), startAngle = -50f, sweepAngle = 130f,
             useCenter = false,
@@ -415,7 +425,6 @@ private fun GoogleLogo(modifier: Modifier = Modifier) {
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
-        // Red arc (top-left)
         drawArc(
             color = Color(0xFFEA4335), startAngle = -170f, sweepAngle = 120f,
             useCenter = false,
@@ -423,7 +432,6 @@ private fun GoogleLogo(modifier: Modifier = Modifier) {
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
-        // Yellow arc (bottom-left)
         drawArc(
             color = Color(0xFFFBBC05), startAngle = -50f, sweepAngle = -120f,
             useCenter = false,
@@ -431,7 +439,6 @@ private fun GoogleLogo(modifier: Modifier = Modifier) {
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
-        // Green arc (bottom-right)
         drawArc(
             color = Color(0xFF34A853), startAngle = 80f, sweepAngle = 100f,
             useCenter = false,
@@ -439,7 +446,6 @@ private fun GoogleLogo(modifier: Modifier = Modifier) {
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
-        // Horizontal bar
         drawLine(
             color = Color(0xFF4285F4),
             start = androidx.compose.ui.geometry.Offset(s * 0.5f, s * 0.5f),
@@ -467,7 +473,6 @@ fun ErrorBanner(message: String) {
     }
 }
 
-/** Branded OutlinedTextField colors following the crimson primary */
 @Composable
 fun authTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -494,7 +499,11 @@ private fun LoginPreviewLight() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Login – Dark")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Login – Dark"
+)
 @Composable
 private fun LoginPreviewDark() {
     ThaparBitesTheme(darkTheme = true) {

@@ -33,7 +33,9 @@ data class LoginUiState(
 
 class LoginViewModel : ViewModel() {
 
-    private val auth = FirebaseAuth.getInstance()
+    // FIX 1: lazy init — FirebaseAuth.getInstance() is no longer called
+    // during ViewModel construction, avoiding blocking the main thread.
+    private val auth by lazy { FirebaseAuth.getInstance() }
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -75,7 +77,13 @@ class LoginViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, loadingSource = LoadingSource.EMAIL, generalError = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    loadingSource = LoadingSource.EMAIL,
+                    generalError = null
+                )
+            }
             try {
                 auth.signInWithEmailAndPassword(state.email.trim(), state.password).await()
                 onSuccess()
@@ -92,26 +100,31 @@ class LoginViewModel : ViewModel() {
     }
 
     // ── Google Sign-In ────────────────────────
-    // Call this from the Activity/Composable after receiving GoogleSignInAccount.
-    // Pass the idToken to complete sign-in with Firebase.
+    // FIX 2: No longer sets isLoading when idToken is null.
+    // Previously, returning null early left the loading spinner stuck forever
+    // if the user cancelled the Google account picker.
+    // Now loading only starts once we actually have a token to exchange.
 
     fun loginWithGoogle(onSuccess: () -> Unit, idToken: String? = null) {
-        // If idToken is null, the composable should trigger the Google sign-in launcher
-        // and call back this function with the received token.
         if (idToken == null) {
-            // Signal UI to launch Google Sign-In — handled in LoginScreen via a shared callback
-            _uiState.update { it.copy(isLoading = true, loadingSource = LoadingSource.GOOGLE) }
+            // Signal UI to launch Google Sign-In launcher — do NOT touch loading state here.
+            // The launcher will call back with a token (or call onGoogleSignInFailed).
             return
         }
 
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, loadingSource = LoadingSource.GOOGLE, generalError = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    loadingSource = LoadingSource.GOOGLE,
+                    generalError = null
+                )
+            }
             try {
                 val result = auth.signInWithCredential(credential).await()
-                val email = result.user?.email ?: ""
+                val email = result.user?.email.orEmpty()
                 if (!email.endsWith("@thapar.edu")) {
-                    // Domain check — sign out the non-thapar user
                     auth.signOut()
                     _uiState.update {
                         it.copy(
@@ -137,7 +150,11 @@ class LoginViewModel : ViewModel() {
 
     fun onGoogleSignInFailed() {
         _uiState.update {
-            it.copy(isLoading = false, loadingSource = null, generalError = "Google Sign-In failed. Try again.")
+            it.copy(
+                isLoading = false,
+                loadingSource = null,
+                generalError = "Google Sign-In failed. Try again."
+            )
         }
     }
 
@@ -155,4 +172,3 @@ class LoginViewModel : ViewModel() {
         }
     }
 }
-

@@ -61,12 +61,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ccs.thaparbites.data.dummy.tietHostels
 import com.ccs.thaparbites.ui.auth.authTextFieldColors
 import com.ccs.thaparbites.ui.home.HomeBottomBar
 import com.ccs.thaparbites.ui.theme.Crimson500
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
-import com.ccs.thaparbites.BuildConfig  // or use a hardcoded string for MVP
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,10 +107,10 @@ fun ProfileScreen(
         bottomBar = {
             HomeBottomBar(
                 currentRoute = "PROFILE",
-                onHome = onNavigateHome,
-                onOrders = onNavigateOrders,
-                onCart = onNavigateCart,
-                onProfile = {}
+                onHomeClick = onNavigateHome,
+                onOrdersClick = onNavigateOrders,
+                onCartClick = onNavigateCart,
+                onProfileClick = {}
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

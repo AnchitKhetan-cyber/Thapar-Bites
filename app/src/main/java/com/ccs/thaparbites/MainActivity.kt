@@ -73,74 +73,97 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(NavRoutes.LOGIN) { inclusive = true }
                                 }
                             },
-                            onNavigateBack = { navController.popBackStack() }
+                            onNavigateToLogin = {
+                                navController.popBackStack()
+                            }
                         )
                     }
 
                     composable(NavRoutes.HOME) {
                         HomeScreen(
-                            sharedCartViewModel = sharedCartViewModel,
-                            onNavigateToStore = { storeId ->
-                                navController.navigate(NavRoutes.menu(storeId))
+                            onStoreClick = { store ->
+                                navController.navigate(NavRoutes.menu(store.id))
                             },
-                            onNavigateToCart = { navController.navigate(NavRoutes.CART) },
-                            onNavigateToOrders = { navController.navigate(NavRoutes.ORDERS) },
-                            onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) }
+                            onCartClick = {
+                                navController.navigate(NavRoutes.CART)
+                            },
+                            onOrdersClick = {
+                                navController.navigate(NavRoutes.ORDERS)
+                            },
+                            onProfileClick = {
+                                navController.navigate(NavRoutes.PROFILE)
+                            }
                         )
                     }
 
                     composable(NavRoutes.MENU + "/{storeId}") { backStackEntry ->
                         val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
+
                         MenuScreen(
                             storeId = storeId,
-                            sharedCartViewModel = sharedCartViewModel,
-                            onNavigateToCart = { navController.navigate(NavRoutes.CART) },
-                            onNavigateBack = { navController.popBackStack() }
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onViewCart = {
+                                navController.navigate(NavRoutes.CART)
+                            }
                         )
                     }
 
                     composable(NavRoutes.CART) {
                         CartScreen(
-                            sharedCartViewModel = sharedCartViewModel,
-                            onNavigateToCheckout = { navController.navigate(NavRoutes.CHECKOUT) },
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToOrders = { navController.navigate(NavRoutes.ORDERS) },
-                            onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) },
-                            onNavigateToHome = { navController.navigate(NavRoutes.HOME) }
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onCheckout = {
+                                navController.navigate(NavRoutes.CHECKOUT)
+                            }
                         )
                     }
 
                     composable(NavRoutes.CHECKOUT) {
                         CheckoutScreen(
-                            sharedCartViewModel = sharedCartViewModel,
-                            onOrderPlaced = {
-                                sharedCartViewModel.clear()
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onOrderPlaced = { orderId ->
                                 navController.navigate(NavRoutes.ORDERS) {
                                     popUpTo(NavRoutes.HOME) { inclusive = false }
                                 }
-                            },
-                            onNavigateBack = { navController.popBackStack() }
+                            }
                         )
                     }
 
                     composable(NavRoutes.ORDERS) {
                         OrdersScreen(
-                            onNavigateToHome = { navController.navigate(NavRoutes.HOME) },
-                            onNavigateToCart = { navController.navigate(NavRoutes.CART) },
-                            onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) }
+                            onNavigateHome = {
+                                navController.navigate(NavRoutes.HOME)
+                            },
+                            onNavigateCart = {
+                                navController.navigate(NavRoutes.CART)
+                            },
+                            onNavigateProfile = {
+                                navController.navigate(NavRoutes.PROFILE)
+                            }
                         )
                     }
 
                     composable(NavRoutes.PROFILE) {
                         ProfileScreen(
-                            onSignOut = {
+                            onSignedOut = {
                                 navController.navigate(NavRoutes.LOGIN) {
                                     popUpTo(0) { inclusive = true }
                                 }
                             },
-                            onNavigateToHome = { navController.navigate(NavRoutes.HOME) },
-                            onNavigateToCart = { navController.navigate(NavRoutes.CART) },
-                            onNavigateToOrders = { navController.navigate(NavRoutes.ORDERS) }
+                            onNavigateHome = {
+                                navController.navigate(NavRoutes.HOME)
+                            },
+                            onNavigateCart = {
+                                navController.navigate(NavRoutes.CART)
+                            },
+                            onNavigateOrders = {
+                                navController.navigate(NavRoutes.ORDERS)
+                            }
                         )
                     }
                 }

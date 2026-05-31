@@ -4,6 +4,7 @@ import com.ccs.thaparbites.data.dummy.CartItem
 import com.ccs.thaparbites.data.dummy.Order
 import com.ccs.thaparbites.data.dummy.OrderStatus
 import com.ccs.thaparbites.data.dummy.PaymentMethod
+import com.ccs.thaparbites.data.dummy.UserProfile
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -11,6 +12,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,7 +52,7 @@ class OrderRepository @Inject constructor(
                             paymentMethod = PaymentMethod.valueOf(
                                 doc.getString("paymentMethod") ?: PaymentMethod.CASH.name
                             ),
-                            placedAt = (doc.getTimestamp("placedAt")?.toDate()?.toString()) ?: ""
+                            placedAt = doc.getTimestamp("placedAt")?.toDate() ?: Date()
                         )
                     } catch (e: Exception) { null }
                 }

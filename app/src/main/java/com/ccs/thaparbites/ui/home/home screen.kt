@@ -450,7 +450,7 @@ fun StoreCard(
                         }
                     }
                     // Payment badge
-                    val payLabel = if (store.paymentMethod == PaymentMethod.UPI_AND_CASH) "UPI & Cash" else "UPI Only"
+                    val payLabel = if (store.paymentMethod == PaymentMethod.CASH) "UPI & Cash" else "UPI Only"
                     Text(
                         text = payLabel,
                         style = MaterialTheme.typography.labelSmall,

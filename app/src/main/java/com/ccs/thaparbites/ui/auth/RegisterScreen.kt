@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -25,6 +24,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.ui.theme.*
+
+// ─────────────────────────────────────────────
+//  FIX: Hostel list moved to top-level constant.
+//  Previously declared inside HostelDropdown composable,
+//  which created a new List object on every recomposition.
+// ─────────────────────────────────────────────
+
+private val HOSTELS = listOf(
+    "Kailash Boys Hostel",
+    "Himachal Boys Hostel",
+    "Vindhyachal Boys Hostel",
+    "Aravali Boys Hostel",
+    "Satpura Boys Hostel",
+    "Nilgiri Boys Hostel",
+    "Shivalik Girls Hostel",
+    "Manimahesh Girls Hostel",
+    "Day Scholar"
+)
 
 // ─────────────────────────────────────────────
 //  Screen
@@ -77,7 +94,10 @@ fun RegisterContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Crimson arc — smaller than login (top accent only)
-        Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+        Canvas(modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+        ) {
             drawArc(
                 brush = Brush.verticalGradient(
                     colors = listOf(Crimson500, Crimson600)
@@ -85,8 +105,14 @@ fun RegisterContent(
                 startAngle = 0f,
                 sweepAngle = 180f,
                 useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, -size.height * 0.6f),
-                size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 2f)
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    -size.width * 0.1f,
+                    -size.height * 0.6f
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    size.width * 1.2f,
+                    size.height * 2f
+                )
             )
         }
 
@@ -143,7 +169,9 @@ fun RegisterContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = CardShape,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
@@ -231,20 +259,28 @@ fun RegisterContent(
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     imageVector = if (passwordVisible)
-                                        Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        Icons.Default.VisibilityOff
+                                    else Icons.Default.Visibility,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         },
                         visualTransformation = if (passwordVisible)
-                            VisualTransformation.None else PasswordVisualTransformation(),
+                            VisualTransformation.None
+                        else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
                         supportingText = {
                             if (uiState.passwordError != null) {
-                                Text(uiState.passwordError, color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    uiState.passwordError,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             } else {
-                                Text("Minimum 6 characters", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    "Minimum 6 characters",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         },
                         keyboardOptions = KeyboardOptions(
@@ -276,7 +312,6 @@ fun RegisterContent(
                         },
                         trailingIcon = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Show checkmark when passwords match
                                 if (uiState.confirmPassword.isNotEmpty() &&
                                     uiState.confirmPassword == uiState.password
                                 ) {
@@ -288,10 +323,13 @@ fun RegisterContent(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
-                                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                IconButton(
+                                    onClick = { confirmPasswordVisible = !confirmPasswordVisible }
+                                ) {
                                     Icon(
                                         imageVector = if (confirmPasswordVisible)
-                                            Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            Icons.Default.VisibilityOff
+                                        else Icons.Default.Visibility,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -299,11 +337,15 @@ fun RegisterContent(
                             }
                         },
                         visualTransformation = if (confirmPasswordVisible)
-                            VisualTransformation.None else PasswordVisualTransformation(),
+                            VisualTransformation.None
+                        else PasswordVisualTransformation(),
                         isError = uiState.confirmPasswordError != null,
                         supportingText = {
                             if (uiState.confirmPasswordError != null) {
-                                Text(uiState.confirmPasswordError, color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    uiState.confirmPasswordError,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         },
                         keyboardOptions = KeyboardOptions(
@@ -387,7 +429,6 @@ fun RegisterContent(
 //  Helper composables
 // ─────────────────────────────────────────────
 
-/** Generic single-line auth text field */
 @Composable
 private fun AuthTextField(
     value: String,
@@ -437,7 +478,6 @@ private fun AuthTextField(
     )
 }
 
-/** Hostel dropdown using ExposedDropdownMenuBox */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HostelDropdown(
@@ -445,17 +485,7 @@ private fun HostelDropdown(
     onHostelSelected: (String) -> Unit,
     error: String?
 ) {
-    val hostels = listOf(
-        "Kailash Boys Hostel",
-        "Himachal Boys Hostel",
-        "Vindhyachal Boys Hostel",
-        "Aravali Boys Hostel",
-        "Satpura Boys Hostel",
-        "Nilgiri Boys Hostel",
-        "Shivalik Girls Hostel",
-        "Manimahesh Girls Hostel",
-        "Day Scholar"
-    )
+    // FIX: Uses top-level HOSTELS constant — no allocation on recomposition.
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -477,7 +507,9 @@ private fun HostelDropdown(
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
             isError = error != null,
             supportingText = {
                 if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
@@ -493,7 +525,7 @@ private fun HostelDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            hostels.forEach { hostel ->
+            HOSTELS.forEach { hostel ->
                 DropdownMenuItem(
                     text = { Text(hostel) },
                     onClick = {
@@ -533,7 +565,11 @@ private fun RegisterPreviewLight() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Register – Dark")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Register – Dark"
+)
 @Composable
 private fun RegisterPreviewDark() {
     ThaparBitesTheme(darkTheme = true) {

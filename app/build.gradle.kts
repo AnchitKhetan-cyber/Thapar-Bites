@@ -98,6 +98,8 @@ dependencies {
     kapt("com.google.dagger:hilt-compiler:2.57.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
 }
 
 kapt {

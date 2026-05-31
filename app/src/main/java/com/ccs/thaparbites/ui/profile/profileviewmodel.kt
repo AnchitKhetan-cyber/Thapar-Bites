@@ -8,8 +8,30 @@ import com.ccs.thaparbites.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+// ── UI state ──────────────────────────────────────────────────────────────────
+
+data class ProfileUiState(
+    val user: UserProfile = UserProfile(
+        name = TODO(),
+        email = TODO(),
+        phone = TODO(),
+        hostelName = TODO()
+    ),
+    val isEditMode: Boolean = false,
+    val editPhone: String = "",
+    val editHostel: String = "",
+    val isSaving: Boolean = false,
+    val saveSuccess: Boolean = false,   // one-shot flag; Screen resets it via LaunchedEffect
+    val error: String? = null,
+    val showSignOutDialog: Boolean = false
+)
+
+// ── ViewModel ─────────────────────────────────────────────────────────────────
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -17,74 +39,122 @@ class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
-    private val _user = MutableStateFlow<UserProfile?>(null)
-    val user: StateFlow<UserProfile?> = _user
-
-    private val _isEditing = MutableStateFlow(false)
-    val isEditing: StateFlow<Boolean> = _isEditing
-
-    private val _editPhone = MutableStateFlow("")
-    val editPhone: StateFlow<String> = _editPhone
-
-    private val _editHostel = MutableStateFlow("")
-    val editHostel: StateFlow<String> = _editHostel
-
-    private val _isSaving = MutableStateFlow(false)
-    val isSaving: StateFlow<Boolean> = _isSaving
-
-    private val _showSignOutDialog = MutableStateFlow(false)
-    val showSignOutDialog: StateFlow<Boolean> = _showSignOutDialog
-
-    private val _phoneError = MutableStateFlow<String?>(null)
-    val phoneError: StateFlow<String?> = _phoneError
+    private val _state = MutableStateFlow(ProfileUiState())
+    val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
     init { loadUser() }
 
+    // ── Load ──────────────────────────────────────────────────────────────────
+
     private fun loadUser() {
         viewModelScope.launch {
-            _user.value = userRepository.getUser()
-            _editPhone.value = _user.value?.phone ?: ""
-            _editHostel.value = _user.value?.hostelName ?: ""
+            val user = userRepository.getUser() ?: UserProfile(
+                name = TODO(),
+                email = TODO(),
+                phone = TODO(),
+                hostelName = TODO()
+            )
+            _state.update {
+                it.copy(
+                    user = user,
+                    editPhone = user.phone,
+                    editHostel = user.hostelName
+                )
+            }
         }
     }
 
-    fun startEditing() { _isEditing.value = true }
+    // ── Edit mode ─────────────────────────────────────────────────────────────
+
+    /** Called from the Edit icon in the TopAppBar */
+    fun enterEditMode() {
+        _state.update {
+            it.copy(
+                isEditMode = true,
+                editPhone = it.user.phone,
+                editHostel = it.user.hostelName,
+                error = null,
+                saveSuccess = false
+            )
+        }
+    }
+
+    /** Called from the Cancel button */
+    fun exitEditMode() {
+        _state.update {
+            it.copy(
+                isEditMode = false,
+                editPhone = it.user.phone,
+                editHostel = it.user.hostelName,
+                error = null
+            )
+        }
+    }
+
+    // ── Field changes ─────────────────────────────────────────────────────────
 
     fun onPhoneChanged(value: String) {
-        _editPhone.value = value
-        _phoneError.value = null
+        _state.update { it.copy(editPhone = value, error = null) }
     }
 
-    fun onHostelChanged(value: String) { _editHostel.value = value }
+    fun onHostelChanged(value: String) {
+        _state.update { it.copy(editHostel = value) }
+    }
+
+    // ── Save ──────────────────────────────────────────────────────────────────
 
     fun saveChanges() {
-        val phone = _editPhone.value.trim()
+        val phone = _state.value.editPhone.trim()
         if (phone.length != 10 || !phone.all { it.isDigit() }) {
-            _phoneError.value = "Enter a valid 10-digit phone number"
+            _state.update { it.copy(error = "Enter a valid 10-digit phone number") }
             return
         }
+
         viewModelScope.launch {
-            _isSaving.value = true
-            val success = userRepository.updateUser(phone, _editHostel.value)
+            _state.update { it.copy(isSaving = true, error = null, saveSuccess = false) }
+
+            val hostel = _state.value.editHostel
+            val success = userRepository.updateUser(phone, hostel)
+
             if (success) {
-                _user.value = _user.value?.copy(phone = phone, hostelName = _editHostel.value)
-                _isEditing.value = false
+                _state.update {
+                    it.copy(
+                        user = it.user.copy(phone = phone, hostelName = hostel),
+                        isEditMode = false,
+                        isSaving = false,
+                        saveSuccess = true   // triggers the Snackbar in the Screen
+                    )
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        isSaving = false,
+                        error = "Failed to save. Please try again."
+                    )
+                }
             }
-            _isSaving.value = false
         }
     }
 
-    fun cancelEditing() {
-        _isEditing.value = false
-        _editPhone.value = _user.value?.phone ?: ""
-        _editHostel.value = _user.value?.hostelName ?: ""
-        _phoneError.value = null
+    // ── Sign-out dialog ───────────────────────────────────────────────────────
+
+    fun showSignOutDialog() {
+        _state.update { it.copy(showSignOutDialog = true) }
     }
 
-    fun showSignOutDialog() { _showSignOutDialog.value = true }
-    fun dismissSignOutDialog() { _showSignOutDialog.value = false }
+    fun hideSignOutDialog() {
+        _state.update { it.copy(showSignOutDialog = false) }
+    }
 
-    fun signOut() {
-        viewModelScope.launch { authRepository.signOut() }
+    /**
+     * Signs the user out, then invokes [onSignedOut] on the main thread so
+     * the NavController can navigate away. Matches the call-site in ProfileScreen:
+     *   viewModel.signOut(onSignedOut)
+     */
+    fun signOut(onSignedOut: () -> Unit) {
+        viewModelScope.launch {
+            authRepository.signOut()
+            onSignedOut()
+        }
     }
 }

@@ -226,7 +226,7 @@ private fun StoreInfoHeader(store: Store) {
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
-            if (store.paymentMethod == PaymentMethod.UPI_AND_CASH) {
+            if (store.paymentMethod == PaymentMethod.CASH) {
                 AssistChip(
                     onClick = {},
                     label = {
