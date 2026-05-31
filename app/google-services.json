@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "233876426652",
+    "project_id": "thapar-bites",
+    "storage_bucket": "thapar-bites.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:233876426652:android:82ee9b90127166f728c259",
+        "android_client_info": {
+          "package_name": "com.ccs.thaparbites"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "233876426652-r0oavf1ampv1v90up46cc15qbs0us53a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ccs.thaparbites",
+            "certificate_hash": "610b9e6ecd302411affe96b0db83eb6eab8539ab"
+          }
+        },
+        {
+          "client_id": "233876426652-r8ua1rehpvqpe6bgserh4u7qjfgv3aps.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCi_Ku0S8XGNXi_2zRnMOILchEiyRMdMDk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "233876426652-r8ua1rehpvqpe6bgserh4u7qjfgv3aps.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
