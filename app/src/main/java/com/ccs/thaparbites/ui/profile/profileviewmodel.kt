@@ -3,7 +3,7 @@ package com.ccs.thaparbites.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ccs.thaparbites.data.dummy.UserProfile
-import com.ccs.thaparbites.data.dummy.dummyUserProfile
+import com.ccs.thaparbites.data.dummy.dummyUser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ProfileScreenState(
-    val user: UserProfile = dummyUserProfile,
+    val user: UserProfile = dummyUser,
     val editPhone: String = "",
     val editHostel: String = "",
     val isEditMode: Boolean = false,
@@ -38,7 +38,7 @@ class ProfileViewModel : ViewModel() {
             // val doc = firestore.collection("users").document(uid).get().await()
             // val user = doc.toObject(UserProfile::class.java) ?: return@launch
             delay(400)
-            val user = dummyUserProfile
+            val user = dummyUser
             _state.update { it.copy(user = user, editPhone = user.phone, editHostel = user.hostelName) }
         }
     }

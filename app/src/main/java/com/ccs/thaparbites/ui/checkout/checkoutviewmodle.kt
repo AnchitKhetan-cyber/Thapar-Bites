@@ -8,6 +8,7 @@ import com.ccs.thaparbites.data.dummy.OrderStatus
 import com.ccs.thaparbites.data.dummy.PaymentMethod
 import com.ccs.thaparbites.data.dummy.Store
 import com.ccs.thaparbites.data.dummy.UserProfile
+import com.ccs.thaparbites.data.dummy.dummyUser
 import com.ccs.thaparbites.data.dummy.dummyUserProfile
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,7 @@ sealed class CheckoutUiState {
 data class CheckoutScreenState(
     val cart: List<CartItem> = emptyList(),
     val store: Store? = null,
-    val user: UserProfile = dummyUserProfile,
+    val user: UserProfile = dummyUser,
     val selectedPayment: PaymentMethod = PaymentMethod.UPI_ONLY,
     val subtotal: Double = 0.0,
     val deliveryFee: Double = 10.0,
@@ -51,7 +52,7 @@ class CheckoutViewModel : ViewModel() {
         _state.value = CheckoutScreenState(
             cart = cart,
             store = store,
-            user = dummyUserProfile,          // replace with Firestore fetch in prod
+            user = dummyUser,          // replace with Firestore fetch in prod
             selectedPayment = defaultPayment,
             subtotal = subtotal,
             total = total
