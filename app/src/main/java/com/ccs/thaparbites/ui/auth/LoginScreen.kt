@@ -48,27 +48,15 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
 
-    // One-shot event collector — same pattern as Humble Contacts
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-
-                is LoginEvent.NavigateToHome -> {
-                    onLoginSuccess()
-                }
-
-                is LoginEvent.NavigateToPhoneSetup -> {
-                    onNavigateToPhoneSetup()
-                }
-
+                is LoginEvent.NavigateToHome -> onLoginSuccess()
+                is LoginEvent.NavigateToPhoneSetup -> onNavigateToPhoneSetup()
                 is LoginEvent.LaunchGoogleSignIn -> {
-                    // Launch in a child coroutine so the collector is not blocked
                     launch {
                         val activity = context as? Activity ?: return@launch
-
-                        // Use Credential-Manager-based helper from Humble Contacts
                         val helper = GoogleSignInHelper(activity)
                         when (val result = helper.signIn()) {
                             is GoogleSignInHelper.GoogleSignInResult.Success ->
@@ -79,7 +67,6 @@ fun LoginScreen(
                         }
                     }
                 }
-
                 else -> Unit
             }
         }
@@ -92,7 +79,11 @@ fun LoginScreen(
         onLoginClick = viewModel::loginWithEmail,
         onGoogleSignInClick = viewModel::onGoogleSignInClicked,
         onNavigateToRegister = onNavigateToRegister,
-        onTogglePasswordVisibility = viewModel::togglePasswordVisibility
+        onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
+        // ✅ Pass the ViewModel function as a lambda
+        onSendPasswordReset = { email, onResult ->
+            viewModel.sendPasswordReset(email, onResult)
+        }
     )
 }
 
@@ -108,9 +99,12 @@ fun LoginContent(
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    onTogglePasswordVisibility: () -> Unit = {}
+    onTogglePasswordVisibility: () -> Unit = {},
+    // ✅ New parameter — callback that hands the result back to the dialog
+    onSendPasswordReset: (email: String, onResult: (Boolean, String?) -> Unit) -> Unit = { _, _ -> }
 ) {
     val focusManager = LocalFocusManager.current
+    var showForgotPassword by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -119,30 +113,16 @@ fun LoginContent(
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
-            ){
-                focusManager.clearFocus()
-            }
+            ) { focusManager.clearFocus() }
     ) {
-        // Crimson arc decoration at top
-        Canvas(modifier = Modifier
-            .fillMaxWidth()
-            .height(260.dp)
-        ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(260.dp)) {
             drawArc(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Crimson500, Crimson600)
-                ),
+                brush = Brush.verticalGradient(colors = listOf(Crimson500, Crimson600)),
                 startAngle = 0f,
                 sweepAngle = 180f,
                 useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    -size.width * 0.1f,
-                    -size.height * 0.8f
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    size.width * 1.2f,
-                    size.height * 1.8f
-                )
+                topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, -size.height * 0.8f),
+                size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 1.8f)
             )
         }
 
@@ -153,41 +133,31 @@ fun LoginContent(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Spacer(modifier = Modifier.height(56.dp))
-
-            // ── Brand Header ──────────────────────────────
             BrandHeader()
-
             Spacer(modifier = Modifier.height(40.dp))
 
-            // ── Login Card ────────────────────────────────
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = CardShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-
                     Text(
                         text = "Sign In",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-
                     Text(
                         text = "Use your @thapar.edu account",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Email Field
@@ -208,10 +178,7 @@ fun LoginContent(
                         isError = uiState.emailError != null,
                         supportingText = {
                             if (uiState.emailError != null) {
-                                Text(
-                                    text = uiState.emailError,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+                                Text(text = uiState.emailError, color = MaterialTheme.colorScheme.error)
                             }
                         },
                         keyboardOptions = KeyboardOptions(
@@ -245,8 +212,7 @@ fun LoginContent(
                             IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
                                     imageVector = if (uiState.passwordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else Icons.Default.Visibility,
+                                        Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                     contentDescription = if (uiState.passwordVisible)
                                         "Hide password" else "Show password",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -254,15 +220,11 @@ fun LoginContent(
                             }
                         },
                         visualTransformation = if (uiState.passwordVisible)
-                            VisualTransformation.None
-                        else PasswordVisualTransformation(),
+                            VisualTransformation.None else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
                         supportingText = {
                             if (uiState.passwordError != null) {
-                                Text(
-                                    text = uiState.passwordError,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+                                Text(text = uiState.passwordError, color = MaterialTheme.colorScheme.error)
                             }
                         },
                         keyboardOptions = KeyboardOptions(
@@ -281,19 +243,24 @@ fun LoginContent(
                         colors = authTextFieldColors()
                     )
 
-                    // Global error banner
-                    AnimatedVisibility(visible = uiState.generalError != null) {
-                        uiState.generalError?.let { error ->
-                            ErrorBanner(message = error)
-                        }
+                    // ✅ Forgot password link — sits right below password field
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                        Text(
+                            text = "Forgot password?",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { showForgotPassword = true }
+                        )
                     }
 
-                    // Sign In Button
+                    AnimatedVisibility(visible = uiState.generalError != null) {
+                        uiState.generalError?.let { ErrorBanner(message = it) }
+                    }
+
                     Button(
                         onClick = onLoginClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         enabled = !uiState.isLoading,
                         shape = PillShape,
                         colors = ButtonDefaults.buttonColors(
@@ -316,7 +283,6 @@ fun LoginContent(
                         }
                     }
 
-                    // ── Divider ───────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -330,18 +296,12 @@ fun LoginContent(
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
 
-                    // ── Google Sign-In ─────────────────────
                     OutlinedButton(
                         onClick = onGoogleSignInClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         enabled = !uiState.isLoading,
                         shape = PillShape,
-                        border = BorderStroke(
-                            1.5.dp,
-                            MaterialTheme.colorScheme.outline
-                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.onSurface
                         )
@@ -371,7 +331,6 @@ fun LoginContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Register link ─────────────────────────────
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -392,11 +351,156 @@ fun LoginContent(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        // ✅ Dialog — onSend now properly routes through onSendPasswordReset
+        if (showForgotPassword) {
+            ForgotPasswordDialog(
+                onDismiss = { showForgotPassword = false },
+                onSend = { email, onResult ->
+                    onSendPasswordReset(email, onResult)
+                }
+            )
+        }
     }
 }
 
 // ─────────────────────────────────────────────
-//  Reusable sub-composables
+//  ForgotPasswordDialog
+// ─────────────────────────────────────────────
+
+@Composable
+fun ForgotPasswordDialog(
+    onDismiss: () -> Unit,
+    // ✅ onSend now takes a result callback so the dialog knows when Firebase responds
+    onSend: (email: String, onResult: (success: Boolean, error: String?) -> Unit) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var sent by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+
+    val isValidThaparEmail = email.trim().endsWith("@thapar.edu")
+
+    fun attemptSend() {
+        when {
+            email.isBlank() -> emailError = "Email is required"
+            !isValidThaparEmail -> emailError = "Only @thapar.edu emails are allowed"
+            else -> {
+                isLoading = true
+                emailError = null
+                onSend(email.trim()) { success, error ->
+                    isLoading = false
+                    if (success) sent = true else emailError = error
+                }
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        shape = CardShape,
+        title = {
+            Text(
+                text = "Reset password",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Enter your @thapar.edu email and we'll send a reset link.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        emailError = null
+                    },
+                    label = { Text("Email") },
+                    placeholder = { Text("yourname@thapar.edu") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    isError = emailError != null,
+                    supportingText = {
+                        if (emailError != null) {
+                            Text(text = emailError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    singleLine = true,
+                    enabled = !sent && !isLoading,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Send
+                    ),
+                    keyboardActions = KeyboardActions(onSend = { attemptSend() }),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = CompactCardShape,
+                    colors = authTextFieldColors()
+                )
+
+                AnimatedVisibility(visible = sent) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(CompactCardShape)
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Reset link sent! Check your inbox.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (sent) onDismiss() else attemptSend() },
+                shape = PillShape,
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Text(if (sent) "Done" else "Send link")
+                }
+            }
+        },
+        dismissButton = {
+            if (!sent) {
+                TextButton(onClick = onDismiss, enabled = !isLoading) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
+}
+
+// ─────────────────────────────────────────────
+//  Reusable sub-composables (unchanged)
 // ─────────────────────────────────────────────
 
 @Composable
@@ -417,9 +521,7 @@ internal fun BrandHeader() {
                 fontSize = 32.sp
             )
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         Text(
             text = "THAPAR BITES",
             style = MaterialTheme.typography.titleLarge,
@@ -427,9 +529,7 @@ internal fun BrandHeader() {
             color = Color.White,
             letterSpacing = 2.sp
         )
-
         Spacer(modifier = Modifier.height(4.dp))
-
         Text(
             text = "GOOD FOOD. GREAT CAMPUS.",
             style = MaterialTheme.typography.labelSmall,
@@ -439,35 +539,30 @@ internal fun BrandHeader() {
     }
 }
 
-/** Google "G" mark drawn with Canvas — no drawable needed */
 @Composable
 internal fun GoogleLogo(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val s = size.minDimension
         drawArc(
-            color = Color(0xFF4285F4), startAngle = -50f, sweepAngle = 130f,
-            useCenter = false,
+            color = Color(0xFF4285F4), startAngle = -50f, sweepAngle = 130f, useCenter = false,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
         drawArc(
-            color = Color(0xFFEA4335), startAngle = -170f, sweepAngle = 120f,
-            useCenter = false,
+            color = Color(0xFFEA4335), startAngle = -170f, sweepAngle = 120f, useCenter = false,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
         drawArc(
-            color = Color(0xFFFBBC05), startAngle = -50f, sweepAngle = -120f,
-            useCenter = false,
+            color = Color(0xFFFBBC05), startAngle = -50f, sweepAngle = -120f, useCenter = false,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
         )
         drawArc(
-            color = Color(0xFF34A853), startAngle = 80f, sweepAngle = 100f,
-            useCenter = false,
+            color = Color(0xFF34A853), startAngle = 80f, sweepAngle = 100f, useCenter = false,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
             topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
             size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)

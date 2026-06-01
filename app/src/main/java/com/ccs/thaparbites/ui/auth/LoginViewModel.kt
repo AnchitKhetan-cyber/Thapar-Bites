@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.ccs.thaparbites.data.repository.AuthRepository
 import com.ccs.thaparbites.data.repository.AuthRepositoryImpl
 import com.ccs.thaparbites.data.repository.AuthResult
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // ── UI State ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +142,20 @@ class LoginViewModel(
 
     fun onGoogleSignInError(message: String) {
         _uiState.update { it.copy(isLoading = false, loadingSource = null, generalError = message) }
+    }
+
+    // LoginViewModel.kt
+    fun sendPasswordReset(email: String, onResult: (success: Boolean, error: String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                Firebase.auth.sendPasswordResetEmail(email).await()
+                onResult(true, null)
+            } catch (e: FirebaseAuthInvalidUserException) {
+                onResult(false, "No account found with this email.")
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Something went wrong. Try again.")
+            }
+        }
     }
 
     private suspend fun checkPhoneAndNavigate() {

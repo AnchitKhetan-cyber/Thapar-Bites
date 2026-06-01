@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -78,15 +80,12 @@ fun MenuScreen(
             val categories =
                 listOf("All") + allItems.map { it.category }.distinct()
 
-            var selectedCategory by remember {
-                mutableStateOf("All")
-            }
+            var selectedCategory by remember { mutableStateOf("All") }
+            var vegOnly by remember { mutableStateOf(false) }   // ← add this
 
-            val displayed =
-                if (selectedCategory == "All") allItems
-                else allItems.filter {
-                    it.category == selectedCategory
-                }
+            val displayed = allItems
+                .filter { if (selectedCategory == "All") true else it.category == selectedCategory }
+                .filter { if (vegOnly) it.isVeg else true }
 
             Scaffold(
                 topBar = {
@@ -157,27 +156,78 @@ fun MenuScreen(
                         .padding(padding)
                 ) {
                     // Category chips
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(categories) { cat ->
-                            FilterChip(
-                                selected = selectedCategory == cat,
-                                onClick = { selectedCategory = cat },
-                                label = { Text(cat, fontSize = 13.sp) },
-                                shape = RoundedCornerShape(50),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = Color.White
+
+                        LazyRow(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 10.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(categories) { cat ->
+                                FilterChip(
+                                    selected = selectedCategory == cat,
+                                    onClick = { selectedCategory = cat },
+                                    label = { Text(cat) }
                                 )
-                            )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (vegOnly) Color(0xFF2E7D32)
+                                    else MaterialTheme.colorScheme.surface
+                                )
+                                .border(
+                                    1.5.dp,
+                                    Color(0xFF2E7D32),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { vegOnly = !vegOnly },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .border(
+                                        1.5.dp,
+                                        if (vegOnly) Color.White else Color(0xFF2E7D32),
+                                        RoundedCornerShape(3.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (vegOnly) Color.White
+                                            else Color(0xFF2E7D32)
+                                        )
+                                )
+                            }
                         }
                     }
 
                     HorizontalDivider(thickness = 0.5.dp)
 
+                    val listState = rememberLazyListState()
+
+                    LaunchedEffect(vegOnly, selectedCategory) {
+                        listState.scrollToItem(0)
+                    }
+
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
