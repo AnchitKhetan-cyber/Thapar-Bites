@@ -17,34 +17,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ccs.thaparbites.R
+import com.ccs.thaparbites.ui.components.GlassCard
+import com.ccs.thaparbites.ui.components.glassTextFieldColors
 import com.ccs.thaparbites.ui.theme.*
 
 private val HOSTELS = listOf(
-    "Agira Hall",
-    "Ambaram Hall",
-    "Amritam Hall",
-    "Ananta Hall",
-    "Anantam Hall",
-    "Dhriti Hall",
-    "FRF",
-    "FRG",
-    "Ira Hall",
-    "Neeram Hall",
-    "Prithvi Hall",
-    "Tejas Hall",
-    "Vahni Hall",
-    "Vasudha Hall - Block E",
-    "Vasudha Hall - Block G",
-    "Viyat Hall",
-    "Vyan Hall",
-    "Vyom Hall"
+    "Agira Hall", "Ambaram Hall", "Amritam Hall", "Ananta Hall", "Anantam Hall",
+    "Dhriti Hall", "FRF", "FRG", "Ira Hall", "Neeram Hall", "Prithvi Hall",
+    "Tejas Hall", "Vahni Hall", "Vasudha Hall - Block E", "Vasudha Hall - Block G",
+    "Viyat Hall", "Vyan Hall", "Vyom Hall"
 ).sorted()
 
 // ─────────────────────────────────────────────
@@ -59,7 +50,6 @@ fun RegisterScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // One-shot event collector — same Channel pattern as Humble Contacts
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -107,37 +97,37 @@ fun RegisterContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
-            ){
-                focusManager.clearFocus()
-            }
+            ) { focusManager.clearFocus() }
+            .imePadding()
     ) {
-        // Crimson arc — smaller than login (top accent only)
-        Canvas(modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-        ) {
-            drawArc(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Crimson500, Crimson600)
-                ),
-                startAngle = 0f,
-                sweepAngle = 180f,
-                useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    -size.width * 0.1f,
-                    -size.height * 0.6f
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    size.width * 1.2f,
-                    size.height * 2f
-                )
-            )
-        }
+        // ── 1. Campus background image ──────────────────────
+        Image(
+            painter = painterResource(id = R.drawable.thapar_campus),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
+        // ── 2. Gradient scrim ───────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.65f),
+                            0.30f to Color.Black.copy(alpha = 0.40f),
+                            0.55f to Color.Black.copy(alpha = 0.50f),
+                            1.0f to Color.Black.copy(alpha = 0.85f)
+                        )
+                    )
+                )
+        )
+
+        // ── 3. Scrollable content ───────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -145,68 +135,23 @@ fun RegisterContent(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(60.dp))
 
-            Spacer(modifier = Modifier.height(40.dp))
+            // Brand header — white on top of the image
+            BrandHeaderOnImage()
 
-            // ── Compact brand bar ─────────────────────────
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Frosted glass card ──────────────────────────
+            GlassCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ti",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Crimson500,
-                        fontSize = 20.sp
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "THAPAR BITES",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        letterSpacing = 1.5.sp
-                    )
-                    Text(
-                        text = "Create your account",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // ── Form Card ─────────────────────────────────
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = CardShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
 
-                    Text(
-                        text = "Personal Details",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    // ── Section: Personal Details ───────────
+                    SectionPill(icon = Icons.Default.Person, label = "Personal Details")
 
                     // Full Name
                     AuthTextField(
@@ -233,35 +178,57 @@ fun RegisterContent(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) }
                     )
 
-                    // Phone
-                    AuthTextField(
+                    // Phone — prefix handled inline
+                    OutlinedTextField(
                         value = uiState.phone,
                         onValueChange = onPhoneChange,
-                        label = "Phone Number",
-                        placeholder = "10-digit mobile number",
-                        leadingIcon = Icons.Default.Phone,
-                        error = uiState.phoneError,
-                        keyboardType = KeyboardType.Phone,
-                        imeAction = ImeAction.Next,
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                        prefix = "+91 "
+                        label = { Text("Phone Number") },
+                        placeholder = { Text("10-digit mobile number") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        },
+                        prefix = {
+                            Text(
+                                "+91 ",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        isError = uiState.phoneError != null,
+                        supportingText = {
+                            if (uiState.phoneError != null)
+                                Text(uiState.phoneError, color = Crimson500)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Phone,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors()
                     )
 
-                    // Hostel Name
+                    // Hostel
                     HostelDropdown(
                         selectedHostel = uiState.hostelName,
                         onHostelSelected = onHostelChange,
                         error = uiState.hostelError
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    Text(
-                        text = "Set Password",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.15f)
                     )
+
+                    // ── Section: Set Password ───────────────
+                    SectionPill(icon = Icons.Default.Lock, label = "Set Password")
 
                     // Password
                     OutlinedTextField(
@@ -272,38 +239,30 @@ fun RegisterContent(
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (uiState.password.isNotEmpty())
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = Color.White
                             )
                         },
                         trailingIcon = {
                             IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
                                     imageVector = if (uiState.passwordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else Icons.Default.Visibility,
+                                        Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = Color.White.copy(alpha = 0.7f)
                                 )
                             }
                         },
                         visualTransformation = if (uiState.passwordVisible)
-                            VisualTransformation.None
-                        else PasswordVisualTransformation(),
+                            VisualTransformation.None else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
                         supportingText = {
-                            if (uiState.passwordError != null) {
-                                Text(
-                                    uiState.passwordError,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            } else {
+                            if (uiState.passwordError != null)
+                                Text(uiState.passwordError, color = Crimson500)
+                            else
                                 Text(
                                     "Minimum 6 characters",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color.White.copy(alpha = 0.6f)
                                 )
-                            }
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
@@ -314,8 +273,8 @@ fun RegisterContent(
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CompactCardShape,
-                        colors = authTextFieldColors()
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors()
                     )
 
                     // Confirm Password
@@ -327,9 +286,7 @@ fun RegisterContent(
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (uiState.confirmPassword.isNotEmpty())
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = Color.White
                             )
                         },
                         trailingIcon = {
@@ -340,7 +297,7 @@ fun RegisterContent(
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = "Passwords match",
-                                        tint = Color(0xFF2E7D32),
+                                        tint = Color(0xFF1DA462),
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -348,25 +305,19 @@ fun RegisterContent(
                                 IconButton(onClick = onToggleConfirmVisibility) {
                                     Icon(
                                         imageVector = if (uiState.confirmPasswordVisible)
-                                            Icons.Default.VisibilityOff
-                                        else Icons.Default.Visibility,
+                                            Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        tint = Color.White.copy(alpha = 0.7f)
                                     )
                                 }
                             }
                         },
                         visualTransformation = if (uiState.confirmPasswordVisible)
-                            VisualTransformation.None
-                        else PasswordVisualTransformation(),
+                            VisualTransformation.None else PasswordVisualTransformation(),
                         isError = uiState.confirmPasswordError != null,
                         supportingText = {
-                            if (uiState.confirmPasswordError != null) {
-                                Text(
-                                    uiState.confirmPasswordError,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
+                            if (uiState.confirmPasswordError != null)
+                                Text(uiState.confirmPasswordError, color = Crimson500)
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
@@ -380,8 +331,8 @@ fun RegisterContent(
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CompactCardShape,
-                        colors = authTextFieldColors()
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors()
                     )
 
                     // Global error
@@ -396,11 +347,17 @@ fun RegisterContent(
                             .fillMaxWidth()
                             .height(52.dp),
                         enabled = !uiState.isLoading,
-                        shape = PillShape,
+                        shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = Color.White
-                        )
+                            containerColor = Color.White.copy(alpha = 0.15f),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.White.copy(alpha = 0.08f)
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.35f)
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         if (uiState.isLoading) {
                             CircularProgressIndicator(
@@ -411,8 +368,9 @@ fun RegisterContent(
                         } else {
                             Text(
                                 text = "Create Account",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.3.sp
                             )
                         }
                     }
@@ -421,7 +379,7 @@ fun RegisterContent(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ── Login link ────────────────────────────────
+            // Sign in row — white text on image background
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -429,18 +387,22 @@ fun RegisterContent(
                 Text(
                     text = "Already have an account? ",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "Sign In",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onNavigateToLogin)
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onNavigateToLogin)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
         }
     }
 }
@@ -448,6 +410,44 @@ fun RegisterContent(
 // ─────────────────────────────────────────────
 //  Helper composables
 // ─────────────────────────────────────────────
+
+/**
+ * Small crimson pill label used as section header inside the card.
+ */
+@Composable
+fun SectionPill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String
+) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = Color.White.copy(alpha = 0.12f),
+        border = BorderStroke(
+            1.dp,
+            Color.White.copy(alpha = 0.25f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(13.dp)
+            )
+            Text(
+                text = label.uppercase(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = 0.8.sp
+            )
+        }
+    }
+}
 
 @Composable
 private fun AuthTextField(
@@ -459,8 +459,7 @@ private fun AuthTextField(
     error: String?,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
-    onNext: (() -> Unit)? = null,
-    prefix: String? = null
+    onNext: (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -471,30 +470,23 @@ private fun AuthTextField(
             Icon(
                 imageVector = leadingIcon,
                 contentDescription = null,
-                tint = if (value.isNotEmpty())
-                    MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
+                tint = Color.White
             )
         },
-        prefix = prefix?.let { { Text(it) } },
         isError = error != null,
         supportingText = {
-            if (error != null) {
-                Text(error, color = MaterialTheme.colorScheme.error)
-            }
+            if (error != null) Text(error, color = Crimson500)
         },
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = imeAction
-        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(
             onNext = { onNext?.invoke() },
             onDone = { onNext?.invoke() }
         ),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
-        shape = CompactCardShape,
-        colors = authTextFieldColors()
+        shape = RoundedCornerShape(
+            12.dp),
+        colors = glassTextFieldColors()
     )
 }
 
@@ -521,32 +513,36 @@ private fun HostelDropdown(
                 Icon(
                     imageVector = Icons.Default.Home,
                     contentDescription = null,
-                    tint = if (selectedHostel.isNotEmpty())
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = Color.White
                 )
             },
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-            },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             isError = error != null,
             supportingText = {
-                if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+                if (error != null) Text(error, color = Crimson500)
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
-            shape = CompactCardShape,
-            colors = authTextFieldColors()
+            shape = RoundedCornerShape(12.dp),
+            colors = glassTextFieldColors()
         )
 
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(
+                Color(0xFF1A1A1A)
+            )
         ) {
             HOSTELS.forEach { hostel ->
                 DropdownMenuItem(
-                    text = { Text(hostel) },
+                    text = {
+                        Text(
+                            text = hostel,
+                            color = Color.White
+                        )
+                    },
                     onClick = {
                         onHostelSelected(hostel)
                         expanded = false
@@ -556,7 +552,7 @@ private fun HostelDropdown(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -568,7 +564,7 @@ private fun HostelDropdown(
 }
 
 // ─────────────────────────────────────────────
-//  Previews
+//  Preview
 // ─────────────────────────────────────────────
 
 @Preview(showBackground = true, name = "Register – Light")

@@ -21,8 +21,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +34,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ccs.thaparbites.R
+import com.ccs.thaparbites.ui.components.GlassCard
+import com.ccs.thaparbites.ui.components.glassTextFieldColors
 import com.ccs.thaparbites.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -80,7 +85,6 @@ fun LoginScreen(
         onGoogleSignInClick = viewModel::onGoogleSignInClicked,
         onNavigateToRegister = onNavigateToRegister,
         onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
-        // ✅ Pass the ViewModel function as a lambda
         onSendPasswordReset = { email, onResult ->
             viewModel.sendPasswordReset(email, onResult)
         }
@@ -88,7 +92,7 @@ fun LoginScreen(
 }
 
 // ─────────────────────────────────────────────
-//  Stateless content (Preview-friendly)
+//  Stateless content
 // ─────────────────────────────────────────────
 
 @Composable
@@ -100,7 +104,6 @@ fun LoginContent(
     onGoogleSignInClick: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onTogglePasswordVisibility: () -> Unit = {},
-    // ✅ New parameter — callback that hands the result back to the dialog
     onSendPasswordReset: (email: String, onResult: (Boolean, String?) -> Unit) -> Unit = { _, _ -> }
 ) {
     val focusManager = LocalFocusManager.current
@@ -109,23 +112,37 @@ fun LoginContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) { focusManager.clearFocus() }
+            .imePadding()
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(260.dp)) {
-            drawArc(
-                brush = Brush.verticalGradient(colors = listOf(Crimson500, Crimson600)),
-                startAngle = 0f,
-                sweepAngle = 180f,
-                useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, -size.height * 0.8f),
-                size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 1.8f)
-            )
-        }
+        // ── 1. Campus background image ──────────────────────
+        Image(
+            painter = painterResource(id = R.drawable.thapar_campus),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
+        // ── 2. Gradient scrim — dark at top, heavier at bottom ──
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.55f),
+                            0.38f to Color.Black.copy(alpha = 0.30f),
+                            0.62f to Color.Black.copy(alpha = 0.45f),
+                            1.0f to Color.Black.copy(alpha = 0.82f)
+                        )
+                    )
+                )
+        )
+
+        // ── 3. Content ──────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,34 +150,36 @@ fun LoginContent(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(56.dp))
-            BrandHeader()
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(60.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = CardShape,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            // Brand header — white on top of the image
+            BrandHeaderOnImage()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Frosted glass card ──────────────────────────
+            GlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        text = "Sign In",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = "Welcome back 👋",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
                     )
                     Text(
-                        text = "Use your @thapar.edu account",
+                        text = "Sign in with your @thapar.edu account",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
 
-                    // Email Field
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Email
                     OutlinedTextField(
                         value = uiState.email,
                         onValueChange = onEmailChange,
@@ -170,16 +189,13 @@ fun LoginContent(
                             Icon(
                                 imageVector = Icons.Default.Email,
                                 contentDescription = null,
-                                tint = if (uiState.email.isNotEmpty())
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = Color.White
                             )
                         },
                         isError = uiState.emailError != null,
                         supportingText = {
-                            if (uiState.emailError != null) {
-                                Text(text = uiState.emailError, color = MaterialTheme.colorScheme.error)
-                            }
+                            if (uiState.emailError != null)
+                                Text(uiState.emailError, color = Crimson500)
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
@@ -190,11 +206,11 @@ fun LoginContent(
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CompactCardShape,
-                        colors = authTextFieldColors()
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors()
                     )
 
-                    // Password Field
+                    // Password
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = onPasswordChange,
@@ -203,9 +219,7 @@ fun LoginContent(
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (uiState.password.isNotEmpty())
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = Color.White
                             )
                         },
                         trailingIcon = {
@@ -215,7 +229,7 @@ fun LoginContent(
                                         Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                     contentDescription = if (uiState.passwordVisible)
                                         "Hide password" else "Show password",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = Color.White.copy(alpha = 0.7f)
                                 )
                             }
                         },
@@ -223,9 +237,8 @@ fun LoginContent(
                             VisualTransformation.None else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
                         supportingText = {
-                            if (uiState.passwordError != null) {
-                                Text(text = uiState.passwordError, color = MaterialTheme.colorScheme.error)
-                            }
+                            if (uiState.passwordError != null)
+                                Text(uiState.passwordError, color = Crimson500)
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
@@ -239,17 +252,17 @@ fun LoginContent(
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CompactCardShape,
-                        colors = authTextFieldColors()
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors()
                     )
 
-                    // ✅ Forgot password link — sits right below password field
+                    // Forgot password
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         Text(
                             text = "Forgot password?",
                             style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            color = Crimson500,
                             modifier = Modifier.clickable { showForgotPassword = true }
                         )
                     }
@@ -258,15 +271,20 @@ fun LoginContent(
                         uiState.generalError?.let { ErrorBanner(message = it) }
                     }
 
+                    // Sign In button
                     Button(
                         onClick = onLoginClick,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
                         enabled = !uiState.isLoading,
-                        shape = PillShape,
+                        shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = Color.White
-                        )
+                            containerColor = Crimson500,
+                            contentColor = Color.White,
+                            disabledContainerColor = Crimson200
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         if (uiState.isLoading && uiState.loadingSource == LoadingSource.EMAIL) {
                             CircularProgressIndicator(
@@ -277,8 +295,9 @@ fun LoginContent(
                         } else {
                             Text(
                                 text = "Sign In",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.3.sp
                             )
                         }
                     }
@@ -287,28 +306,44 @@ fun LoginContent(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = Charcoal200
+                        )
                         Text(
                             text = "  or  ",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Charcoal500,
+                            fontWeight = FontWeight.SemiBold
                         )
-                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = Charcoal200
+                        )
                     }
 
+                    // Google button
                     OutlinedButton(
                         onClick = onGoogleSignInClick,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         enabled = !uiState.isLoading,
-                        shape = PillShape,
-                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.30f)
+                        ),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            contentColor = Color.White
                         )
                     ) {
-                        if (uiState.isLoading && uiState.loadingSource == LoadingSource.GOOGLE) {
+                        if (uiState.isLoading &&
+                            uiState.loadingSource == LoadingSource.GOOGLE
+                        ) {
                             CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Color.White,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -317,11 +352,19 @@ fun LoginContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                GoogleLogo(modifier = Modifier.size(20.dp))
+                                Image(
+                                    painter = painterResource(R.drawable.google_logo),
+                                    contentDescription = "Google",
+                                    modifier = Modifier.size(20.dp)
+                                )
+
                                 Spacer(modifier = Modifier.width(12.dp))
+
                                 Text(
                                     text = "Continue with Google",
-                                    style = MaterialTheme.typography.labelLarge
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
                             }
                         }
@@ -331,6 +374,7 @@ fun LoginContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Sign up row — white text on the image background
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -338,40 +382,40 @@ fun LoginContent(
                 Text(
                     text = "New to Thapar Bites? ",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "Create Account",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onNavigateToRegister)
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onNavigateToRegister)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
         }
 
-        // ✅ Dialog — onSend now properly routes through onSendPasswordReset
         if (showForgotPassword) {
             ForgotPasswordDialog(
                 onDismiss = { showForgotPassword = false },
-                onSend = { email, onResult ->
-                    onSendPasswordReset(email, onResult)
-                }
+                onSend = { email, onResult -> onSendPasswordReset(email, onResult) }
             )
         }
     }
 }
 
 // ─────────────────────────────────────────────
-//  ForgotPasswordDialog
+//  ForgotPasswordDialog — unchanged
 // ─────────────────────────────────────────────
 
 @Composable
 fun ForgotPasswordDialog(
     onDismiss: () -> Unit,
-    // ✅ onSend now takes a result callback so the dialog knows when Firebase responds
     onSend: (email: String, onResult: (success: Boolean, error: String?) -> Unit) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -398,12 +442,12 @@ fun ForgotPasswordDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        shape = CardShape,
+        shape = RoundedCornerShape(20.dp),
         title = {
             Text(
                 text = "Reset password",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.ExtraBold
             )
         },
         text = {
@@ -411,29 +455,19 @@ fun ForgotPasswordDialog(
                 Text(
                     text = "Enter your @thapar.edu email and we'll send a reset link.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Charcoal600
                 )
-
                 OutlinedTextField(
                     value = email,
-                    onValueChange = {
-                        email = it
-                        emailError = null
-                    },
+                    onValueChange = { email = it; emailError = null },
                     label = { Text("Email") },
                     placeholder = { Text("yourname@thapar.edu") },
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Icon(Icons.Default.Email, contentDescription = null, tint = Charcoal400)
                     },
                     isError = emailError != null,
                     supportingText = {
-                        if (emailError != null) {
-                            Text(text = emailError!!, color = MaterialTheme.colorScheme.error)
-                        }
+                        if (emailError != null) Text(emailError!!, color = Crimson500)
                     },
                     singleLine = true,
                     enabled = !sent && !isLoading,
@@ -443,16 +477,15 @@ fun ForgotPasswordDialog(
                     ),
                     keyboardActions = KeyboardActions(onSend = { attemptSend() }),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CompactCardShape,
-                    colors = authTextFieldColors()
+                    shape = RoundedCornerShape(12.dp),
+                    colors = swiggyTextFieldColors()
                 )
-
                 AnimatedVisibility(visible = sent) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(CompactCardShape)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFD4F5E4))
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -460,13 +493,14 @@ fun ForgotPasswordDialog(
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            tint = Color(0xFF1DA462),
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Reset link sent! Check your inbox.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = Color(0xFF1DA462),
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -475,24 +509,21 @@ fun ForgotPasswordDialog(
         confirmButton = {
             Button(
                 onClick = { if (sent) onDismiss() else attemptSend() },
-                shape = PillShape,
-                enabled = !isLoading
+                shape = RoundedCornerShape(50),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Crimson500)
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                 } else {
-                    Text(if (sent) "Done" else "Send link")
+                    Text(if (sent) "Done" else "Send link", fontWeight = FontWeight.ExtraBold)
                 }
             }
         },
         dismissButton = {
             if (!sent) {
                 TextButton(onClick = onDismiss, enabled = !isLoading) {
-                    Text("Cancel")
+                    Text("Cancel", color = Charcoal600)
                 }
             }
         }
@@ -500,79 +531,72 @@ fun ForgotPasswordDialog(
 }
 
 // ─────────────────────────────────────────────
-//  Reusable sub-composables (unchanged)
+//  Sub-composables
 // ─────────────────────────────────────────────
 
+/**
+ * Brand header rendered over the campus image.
+ * Uses white text + a semi-transparent pill background for legibility.
+ */
 @Composable
-internal fun BrandHeader() {
+internal fun BrandHeaderOnImage() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Logo mark — white card with crimson text
         Box(
             modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(50))
+                .size(72.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "ti",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = Crimson500,
-                fontSize = 32.sp
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                color = Crimson500
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "THAPAR BITES",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black,
             color = Color.White,
             letterSpacing = 2.sp
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "GOOD FOOD. GREAT CAMPUS.",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.85f),
-            letterSpacing = 1.sp
-        )
+        // Subtle pill tag line
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = Color.White.copy(alpha = 0.18f)
+        ) {
+            Text(
+                text = "GOOD FOOD · GREAT CAMPUS",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+            )
+        }
     }
 }
+
+// GoogleLogo, ErrorBanner, swiggyTextFieldColors
+// (GoogleLogo and ErrorBanner keep their existing implementations;
+//  authTextFieldColors renamed to swiggyTextFieldColors for clarity)
 
 @Composable
 internal fun GoogleLogo(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val s = size.minDimension
-        drawArc(
-            color = Color(0xFF4285F4), startAngle = -50f, sweepAngle = 130f, useCenter = false,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
-            topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
-            size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
-        )
-        drawArc(
-            color = Color(0xFFEA4335), startAngle = -170f, sweepAngle = 120f, useCenter = false,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
-            topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
-            size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
-        )
-        drawArc(
-            color = Color(0xFFFBBC05), startAngle = -50f, sweepAngle = -120f, useCenter = false,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
-            topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
-            size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
-        )
-        drawArc(
-            color = Color(0xFF34A853), startAngle = 80f, sweepAngle = 100f, useCenter = false,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f),
-            topLeft = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f),
-            size = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
-        )
-        drawLine(
-            color = Color(0xFF4285F4),
-            start = androidx.compose.ui.geometry.Offset(s * 0.5f, s * 0.5f),
-            end = androidx.compose.ui.geometry.Offset(s * 0.9f, s * 0.5f),
-            strokeWidth = s * 0.15f
-        )
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = s * 0.15f)
+        val oval = androidx.compose.ui.geometry.Offset(s * 0.05f, s * 0.05f)
+        val ovalSize = androidx.compose.ui.geometry.Size(s * 0.9f, s * 0.9f)
+        drawArc(color = Color(0xFF4285F4), startAngle = -50f, sweepAngle = 130f, useCenter = false, style = stroke, topLeft = oval, size = ovalSize)
+        drawArc(color = Color(0xFFEA4335), startAngle = -170f, sweepAngle = 120f, useCenter = false, style = stroke, topLeft = oval, size = ovalSize)
+        drawArc(color = Color(0xFFFBBC05), startAngle = -50f, sweepAngle = -120f, useCenter = false, style = stroke, topLeft = oval, size = ovalSize)
+        drawArc(color = Color(0xFF34A853), startAngle = 80f, sweepAngle = 100f, useCenter = false, style = stroke, topLeft = oval, size = ovalSize)
+        drawLine(color = Color(0xFF4285F4), start = androidx.compose.ui.geometry.Offset(s * 0.5f, s * 0.5f), end = androidx.compose.ui.geometry.Offset(s * 0.9f, s * 0.5f), strokeWidth = s * 0.15f)
     }
 }
 
@@ -581,28 +605,35 @@ fun ErrorBanner(message: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(CompactCardShape)
-            .background(MaterialTheme.colorScheme.errorContainer)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Crimson50)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "⚠  $message",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer
+            color = Crimson600,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
 @Composable
-fun authTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    cursorColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-    errorBorderColor = MaterialTheme.colorScheme.error,
-    errorLabelColor = MaterialTheme.colorScheme.error,
+fun swiggyTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Crimson500,
+    focusedLabelColor = Crimson500,
+    cursorColor = Crimson500,
+    unfocusedBorderColor = Charcoal200,
+    unfocusedContainerColor = Charcoal50,
+    focusedContainerColor = Crimson50,
+    errorBorderColor = Crimson500,
+    errorLabelColor = Crimson500,
 )
+
+// Keep old name as alias so RegisterScreen still compiles
+@Composable
+fun authTextFieldColors() = swiggyTextFieldColors()
 
 // ─────────────────────────────────────────────
 //  Previews
