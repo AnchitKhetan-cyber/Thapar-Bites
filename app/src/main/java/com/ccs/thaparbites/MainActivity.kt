@@ -27,6 +27,7 @@ import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 import com.ccs.thaparbites.ui.splash.SplashScreen
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
 import androidx.lifecycle.ViewModelProvider.Factory
+import com.ccs.thaparbites.ui.auth.PhoneSetupScreen
 import com.ccs.thaparbites.ui.checkout.CheckoutScreen
 import com.example.thaparbites.util.FirestoreSeedData
 import dagger.hilt.android.AndroidEntryPoint
@@ -77,6 +78,11 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(NavRoutes.LOGIN) { inclusive = true }
                                 }
                             },
+
+                            onNavigateToPhoneSetup = {
+                                navController.navigate(NavRoutes.PHONE_SETUP)
+                            },
+
                             onNavigateToRegister = {
                                 navController.navigate(NavRoutes.REGISTER)
                             }
@@ -96,6 +102,12 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    composable(NavRoutes.PHONE_SETUP) {
+                         PhoneSetupScreen(
+                            navController = navController
+                        )
+                    }
+
                     composable(NavRoutes.HOME) {
                         HomeScreen(
                             onStoreClick = { store ->
@@ -107,6 +119,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onOrdersClick = {
                                 navController.navigate(NavRoutes.ORDERS)
+                            },
+                            onExpensesClick = {
+                                navController.navigate(NavRoutes.EXPENSES)
                             },
                             onProfileClick = {
                                 navController.navigate(NavRoutes.PROFILE)
@@ -126,14 +141,17 @@ class MainActivity : ComponentActivity() {
                         MenuScreen(
                             storeId = storeId,
                             onBack = { navController.popBackStack() },
-                            onViewCart = { navController.navigate(NavRoutes.CART) }
+                            onViewCart = { navController.navigate(NavRoutes.CART) },
+                            cartViewModel = sharedCartViewModel
                         )
                     }
 
                     composable(NavRoutes.CART) {
                         CartScreen(
-                            cartViewModel = viewModel(),
-                            onBack = { navController.popBackStack() },
+                            cartViewModel = sharedCartViewModel,
+                            onBack = {
+                                navController.popBackStack()
+                            },
                             onNavigateToCheckout = {
                                 navController.navigate(NavRoutes.CHECKOUT)
                             }
@@ -142,35 +160,59 @@ class MainActivity : ComponentActivity() {
 
                     composable(NavRoutes.CHECKOUT) {
                         CheckoutScreen(
-                            onBack = { navController.popBackStack() },
+                            onBack = {
+                                navController.popBackStack()
+                            },
+
                             onOrderPlaced = { _ ->
                                 navController.navigate(NavRoutes.ORDERS) {
-                                    popUpTo(NavRoutes.HOME) { inclusive = false }
+                                    popUpTo(NavRoutes.HOME) {
+                                        inclusive = false
+                                    }
                                 }
-                            }
+                            },
+
+                            cartViewModel = sharedCartViewModel,
+
+                            checkoutViewModel = viewModel(
+                                factory = CheckoutViewModel.Factory()
+                            )
                         )
                     }
 
                     composable(NavRoutes.ORDERS) {
                         OrdersScreen(
-                            viewModel        = viewModel(factory = OrdersViewModel.Factory()),
-                            onNavigateHome   = { navController.navigate(NavRoutes.HOME) },
-                            onNavigateCart   = { navController.navigate(NavRoutes.CART) },
-                            onNavigateProfile = { navController.navigate(NavRoutes.PROFILE) }
+                            viewModel = viewModel(factory = OrdersViewModel.Factory()),
+                            onNavigateHome = {
+                                navController.navigate(NavRoutes.HOME)
+                            },
+                            onNavigateExpenses = {
+                                navController.navigate(NavRoutes.EXPENSES)
+                            },
+                            onNavigateProfile = {
+                                navController.navigate(NavRoutes.PROFILE)
+                            }
                         )
                     }
 
+
                     composable(NavRoutes.PROFILE) {
                         ProfileScreen(
-                            viewModel       = viewModel(factory = ProfileViewModel.Factory()),
-                            onSignedOut     = {
+                            viewModel = viewModel(factory = ProfileViewModel.Factory()),
+                            onSignedOut = {
                                 navController.navigate(NavRoutes.LOGIN) {
                                     popUpTo(0) { inclusive = true }
                                 }
                             },
-                            onNavigateHome  = { navController.navigate(NavRoutes.HOME) },
-                            onNavigateCart  = { navController.navigate(NavRoutes.CART) },
-                            onNavigateOrders = { navController.navigate(NavRoutes.ORDERS) }
+                            onNavigateHome = {
+                                navController.navigate(NavRoutes.HOME)
+                            },
+                            onNavigateOrders = {
+                                navController.navigate(NavRoutes.ORDERS)
+                            },
+                            onNavigateExpenses = {
+                                navController.navigate(NavRoutes.EXPENSES)
+                            }
                         )
                     }
                 }

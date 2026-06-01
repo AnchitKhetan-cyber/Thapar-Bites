@@ -3,6 +3,7 @@ package com.ccs.thaparbites.ui.auth
 import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,16 +43,25 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
+    onNavigateToPhoneSetup: () -> Unit,
     viewModel: LoginViewModel = viewModel(factory = LoginViewModel.Factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
 
     // One-shot event collector — same pattern as Humble Contacts
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is LoginEvent.NavigateToHome -> onLoginSuccess()
+
+                is LoginEvent.NavigateToHome -> {
+                    onLoginSuccess()
+                }
+
+                is LoginEvent.NavigateToPhoneSetup -> {
+                    onNavigateToPhoneSetup()
+                }
 
                 is LoginEvent.LaunchGoogleSignIn -> {
                     // Launch in a child coroutine so the collector is not blocked
@@ -106,6 +116,12 @@ fun LoginContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ){
+                focusManager.clearFocus()
+            }
     ) {
         // Crimson arc decoration at top
         Canvas(modifier = Modifier

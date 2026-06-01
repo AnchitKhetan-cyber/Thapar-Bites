@@ -1,5 +1,6 @@
 package com.ccs.thaparbites.ui.shared
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.ccs.thaparbites.data.dummy.CartItem
 import com.ccs.thaparbites.data.dummy.MenuItem
@@ -26,17 +27,23 @@ class SharedCartViewModel : ViewModel() {
         get() = subtotal + deliveryFee
 
     fun addItem(menuItem: MenuItem) {
+        Log.d("CART_DEBUG", "Adding item: ${menuItem.id}")
+
         _cartItems.update { current ->
             val existing = current.find { it.menuItem.id == menuItem.id }
+
             if (existing != null) {
                 current.map {
-                    if (it.menuItem.id == menuItem.id) it.copy(quantity = it.quantity + 1)
+                    if (it.menuItem.id == menuItem.id)
+                        it.copy(quantity = it.quantity + 1)
                     else it
                 }
             } else {
                 current + CartItem(menuItem, 1)
             }
         }
+
+        Log.d("CART_DEBUG", "Cart = ${_cartItems.value}")
     }
 
     fun removeItem(menuItem: MenuItem) {

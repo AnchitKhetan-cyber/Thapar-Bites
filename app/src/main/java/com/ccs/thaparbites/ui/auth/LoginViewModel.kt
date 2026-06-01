@@ -7,6 +7,7 @@ import com.ccs.thaparbites.data.repository.AuthRepository
 import com.ccs.thaparbites.data.repository.AuthRepositoryImpl
 import com.ccs.thaparbites.data.repository.AuthResult
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,11 +34,11 @@ data class LoginUiState(
 // ── One-shot events (same Channel pattern as Humble Contacts) ─────────────────
 
 sealed class LoginEvent {
-    object NavigateToHome     : LoginEvent()
+    object NavigateToHome : LoginEvent()
+    object NavigateToPhoneSetup : LoginEvent()
     object LaunchGoogleSignIn : LoginEvent()
     data class ShowSnackbar(val message: String) : LoginEvent()
 }
-
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
 class LoginViewModel(
@@ -103,7 +104,7 @@ class LoginViewModel(
             _uiState.update { it.copy(isLoading = false, loadingSource = null) }
 
             when (result) {
-                is AuthResult.Success -> _events.send(LoginEvent.NavigateToHome)
+                is AuthResult.Success -> checkPhoneAndNavigate()
                 is AuthResult.Error   -> _uiState.update { it.copy(generalError = result.message) }
                 else                  -> Unit
             }
@@ -128,7 +129,7 @@ class LoginViewModel(
             _uiState.update { it.copy(isLoading = false, loadingSource = null) }
 
             when (result) {
-                is AuthResult.Success -> _events.send(LoginEvent.NavigateToHome)
+                is AuthResult.Success -> checkPhoneAndNavigate()
                 is AuthResult.Error   -> _uiState.update { it.copy(generalError = result.message) }
                 else                  -> Unit
             }
@@ -138,6 +139,30 @@ class LoginViewModel(
     fun onGoogleSignInError(message: String) {
         _uiState.update { it.copy(isLoading = false, loadingSource = null, generalError = message) }
     }
+
+    private suspend fun checkPhoneAndNavigate() {
+
+        val uid = authRepository.currentUserId() ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { document ->
+
+                val phone = document.getString("phone")
+
+                viewModelScope.launch {
+
+                    if (phone.isNullOrBlank()) {
+                        _events.send(LoginEvent.NavigateToPhoneSetup)
+                    } else {
+                        _events.send(LoginEvent.NavigateToHome)
+                    }
+                }
+            }
+    }
+
 
     // ── Factory ───────────────────────────────────────────────────────────────
 

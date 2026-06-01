@@ -37,6 +37,7 @@ fun HomeScreen(
     onStoreClick: (Store) -> Unit = {},
     onCartClick: () -> Unit = {},
     onOrdersClick: () -> Unit = {},
+    onExpensesClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     homeViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory())
 ) {
@@ -47,11 +48,10 @@ fun HomeScreen(
         topBar = { HomeTopBar(cartItemCount = cartItemCount, onCartClick = onCartClick) },
         bottomBar = {
             HomeBottomBar(
-                onHomeClick    = {},
-                onOrdersClick  = onOrdersClick,
-                onCartClick    = onCartClick,
-                onProfileClick = onProfileClick,
-                cartCount      = cartItemCount
+                onHomeClick = {},
+                onOrdersClick = onOrdersClick,
+                onExpensesClick = onExpensesClick,
+                onProfileClick = onProfileClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -232,10 +232,9 @@ private fun HomeTopBar(cartItemCount: Int, onCartClick: () -> Unit) {
 @Composable
 fun HomeBottomBar(
     currentRoute: String = "home",
-    cartCount: Int = 0,
     onHomeClick: () -> Unit,
     onOrdersClick: () -> Unit,
-    onCartClick: () -> Unit,
+    onExpensesClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     NavigationBar(
@@ -274,28 +273,7 @@ fun HomeBottomBar(
                 indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
-        NavigationBarItem(
-            selected = currentRoute == "cart",
-            onClick  = onCartClick,
-            icon = {
-                BadgedBox(badge = {
-                    if (cartCount > 0) Badge(containerColor = Crimson500) {
-                        Text(cartCount.toString(), color = Color.White)
-                    }
-                }) {
-                    Icon(
-                        if (currentRoute == "cart") Icons.Filled.ShoppingCart else Icons.Outlined.ShoppingCart,
-                        contentDescription = "Cart"
-                    )
-                }
-            },
-            label  = { Text("Cart") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            )
-        )
+
         NavigationBarItem(
             selected = currentRoute == "profile",
             onClick  = onProfileClick,

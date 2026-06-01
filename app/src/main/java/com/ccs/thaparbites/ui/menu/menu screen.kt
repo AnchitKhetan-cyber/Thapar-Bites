@@ -37,7 +37,7 @@ fun MenuScreen(
     onBack: () -> Unit,
     onViewCart: () -> Unit,
     // Receives the Activity-scoped SharedCartViewModel from MainActivity
-    cartViewModel: SharedCartViewModel = viewModel()
+    cartViewModel: SharedCartViewModel
 ) {
     val menuViewModel: MenuViewModel = viewModel(
         factory = MenuViewModel.Factory(storeId)
@@ -182,9 +182,13 @@ fun MenuScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(displayed, key = { it.id }) { item ->
+
+                            val quantity =
+                                cartItems.find { it.menuItem.id == item.id }?.quantity ?: 0
+
                             MenuItemCard(
                                 item = item,
-                                quantity = cartViewModel.getQuantity(item.id),
+                                quantity = quantity,
                                 onAdd = { cartViewModel.addItem(item) },
                                 onRemove = { cartViewModel.removeItem(item) }
                             )

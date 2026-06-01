@@ -45,12 +45,20 @@ class ProfileViewModel(
 
     private fun loadUser() {
         viewModelScope.launch {
-            // Graceful fallback: empty UserProfile if Firestore unavailable
-            val user = userRepository.getUser() ?: UserProfile()
+
+            val firebaseUser = FirebaseAuth.getInstance().currentUser
+
+            val firestoreUser = userRepository.getUser() ?: UserProfile()
+
+            val user = firestoreUser.copy(
+                name = firebaseUser?.displayName ?: firestoreUser.name,
+                email = firebaseUser?.email ?: firestoreUser.email
+            )
+
             _state.update {
                 it.copy(
-                    user       = user,
-                    editPhone  = user.phone,
+                    user = user,
+                    editPhone = user.phone,
                     editHostel = user.hostelName
                 )
             }

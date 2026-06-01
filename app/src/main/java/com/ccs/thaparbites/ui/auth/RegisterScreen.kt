@@ -2,6 +2,7 @@ package com.ccs.thaparbites.ui.auth
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -26,16 +27,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.ui.theme.*
 
 private val HOSTELS = listOf(
-    "Kailash Boys Hostel",
-    "Himachal Boys Hostel",
-    "Vindhyachal Boys Hostel",
-    "Aravali Boys Hostel",
-    "Satpura Boys Hostel",
-    "Nilgiri Boys Hostel",
-    "Shivalik Girls Hostel",
-    "Manimahesh Girls Hostel",
-    "Day Scholar"
-)
+    "Agira Hall",
+    "Ambaram Hall",
+    "Amritam Hall",
+    "Ananta Hall",
+    "Anantam Hall",
+    "Dhriti Hall",
+    "FRF",
+    "FRG",
+    "Ira Hall",
+    "Neeram Hall",
+    "Prithvi Hall",
+    "Tejas Hall",
+    "Vahni Hall",
+    "Vasudha Hall - Block E",
+    "Vasudha Hall - Block G",
+    "Viyat Hall",
+    "Vyan Hall",
+    "Vyom Hall"
+).sorted()
 
 // ─────────────────────────────────────────────
 //  Screen
@@ -98,6 +108,12 @@ fun RegisterContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ){
+                focusManager.clearFocus()
+            }
     ) {
         // Crimson arc — smaller than login (top accent only)
         Canvas(modifier = Modifier

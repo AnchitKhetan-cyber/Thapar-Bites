@@ -1,6 +1,7 @@
 package com.ccs.thaparbites.data.repository
 
 import com.ccs.thaparbites.data.dummy.CartItem
+import com.ccs.thaparbites.data.dummy.MenuItem
 import com.ccs.thaparbites.data.dummy.Order
 import com.ccs.thaparbites.data.dummy.OrderStatus
 import com.ccs.thaparbites.data.dummy.PaymentMethod
@@ -23,10 +24,12 @@ class OrderRepository @Inject constructor(
 ) {
     private val ordersCollection = firestore.collection("orders")
 
+
     // Real-time listener — use in OrdersViewModel
     fun observeOrders(): Flow<List<Order>> = callbackFlow {
         val uid = authRepository.currentUserId()
         if (uid == null) { trySend(emptyList()); close(); return@callbackFlow }
+
 
         val listener = ordersCollection
             .whereEqualTo("userId", uid)
@@ -38,11 +41,35 @@ class OrderRepository @Inject constructor(
                 }
                 val orders = snapshot.documents.mapNotNull { doc ->
                     try {
+
+                        // ADD THIS BLOCK
+                        val items = (doc.get("items") as? List<Map<String, Any>>)
+                            ?.map { itemMap ->
+
+                                val menuItem = com.ccs.thaparbites.data.dummy.MenuItem(
+                                    id = itemMap["itemId"] as? String ?: "",
+                                    storeId = "",
+                                    name = itemMap["name"] as? String ?: "",
+                                    description = "",
+                                    price = ((itemMap["price"] as? Number)?.toInt() ?: 0),
+                                    category = "",
+                                    isVeg = true,
+                                    isAvailable = true,
+                                    emoji = itemMap["emoji"] as? String ?: "🍽️"
+                                )
+
+                                CartItem(
+                                    menuItem = menuItem,
+                                    quantity = (itemMap["quantity"] as? Number)?.toInt() ?: 1
+                                )
+                            } ?: emptyList()
+
+                        // THEN ORDER
                         Order(
                             id = doc.id,
                             storeName = doc.getString("storeName") ?: "",
                             storeEmoji = doc.getString("storeEmoji") ?: "🍽️",
-                            items = emptyList(), // deserialize if needed
+                            items = items,
                             subtotal = doc.getDouble("subtotal") ?: 0.0,
                             deliveryFee = doc.getDouble("deliveryFee") ?: 0.0,
                             total = doc.getDouble("total") ?: 0.0,
@@ -54,7 +81,10 @@ class OrderRepository @Inject constructor(
                             ),
                             placedAt = doc.getTimestamp("placedAt")?.toDate() ?: Date()
                         )
-                    } catch (e: Exception) { null }
+
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
                 trySend(orders)
             }

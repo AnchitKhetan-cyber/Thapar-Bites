@@ -57,7 +57,7 @@ import androidx.compose.ui.platform.LocalLocale
 fun OrdersScreen(
     viewModel: OrdersViewModel = viewModel(),
     onNavigateHome: () -> Unit,
-    onNavigateCart: () -> Unit,
+    onNavigateExpenses: () -> Unit,
     onNavigateProfile: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -77,13 +77,14 @@ fun OrdersScreen(
         },
         bottomBar = {
             HomeBottomBar(
-                currentRoute = "ORDERS",
+                currentRoute = "orders",
                 onHomeClick = onNavigateHome,
                 onOrdersClick = {},
-                onCartClick = onNavigateCart,
+                onExpensesClick = onNavigateExpenses,
                 onProfileClick = onNavigateProfile
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
 
         Box(
@@ -253,7 +254,11 @@ fun OrderStatusChip(status: OrderStatus) {
             "Cancelled"
         )
 
-        OrderStatus.CONFIRMED -> TODO()
+        OrderStatus.CONFIRMED -> Triple(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.primary,
+            "Confirmed"
+        )
     }
 
     Surface(
@@ -314,7 +319,7 @@ private fun OrderDetailSheet(order: Order) {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "₹${"%.0f".format(item.menuItem.price * item.quantity)}",
+                    "₹${item.menuItem.price * item.quantity}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -403,7 +408,11 @@ private fun EmptyOrdersState() {
 @Composable
 private fun OrdersPreviewLight() {
     ThaparBitesTheme(darkTheme = false) {
-        OrdersScreen(onNavigateHome = {}, onNavigateCart = {}, onNavigateProfile = {})
+        OrdersScreen(
+            onNavigateHome = {},
+            onNavigateExpenses = {},
+            onNavigateProfile = {}
+        )
     }
 }
 
@@ -412,7 +421,11 @@ private fun OrdersPreviewLight() {
 @Composable
 private fun OrdersPreviewDark() {
     ThaparBitesTheme(darkTheme = true) {
-        OrdersScreen(onNavigateHome = {}, onNavigateCart = {}, onNavigateProfile = {})
+        OrdersScreen(
+            onNavigateHome = {},
+            onNavigateExpenses = {},
+            onNavigateProfile = {}
+        )
     }
 }
 

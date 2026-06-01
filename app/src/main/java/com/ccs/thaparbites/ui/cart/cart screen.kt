@@ -1,6 +1,8 @@
 package com.ccs.thaparbites.ui.cart
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -19,11 +22,12 @@ import androidx.compose.ui.unit.sp
 import com.ccs.thaparbites.ui.cart.CartViewModel
 import com.ccs.thaparbites.data.dummy.CartItem
 import com.ccs.thaparbites.ui.menu.QuantityStepper
+import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
-    cartViewModel: CartViewModel,
+    cartViewModel: SharedCartViewModel,
     onBack: () -> Unit,
     onNavigateToCheckout: () -> Unit
 ) {
@@ -31,6 +35,7 @@ fun CartScreen(
     val subtotal = cartViewModel.subtotal
     val deliveryFee = if (cartItems.isEmpty()) 0.0 else 10.0
     val total = subtotal + deliveryFee
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
@@ -63,8 +68,20 @@ fun CartScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                    .padding(paddingValues)
+                    .imePadding()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ){
+                        focusManager.clearFocus()
+                    },
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 100.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(cartItems, key = { it.menuItem.id }) { cartItem ->
@@ -211,35 +228,44 @@ fun CheckoutBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .navigationBarsPadding()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 12.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
-                    "Total payable",
+                    text = "Total payable",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
+
                 Text(
-                    "₹${total.toInt()}",
+                    text = "₹${total.toInt()}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 22.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Button(
                 onClick = onCheckout,
+                modifier = Modifier.height(54.dp),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.height(48.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(
-                    "Proceed to Checkout",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    text = "Proceed to Checkout",
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

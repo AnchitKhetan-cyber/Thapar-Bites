@@ -12,7 +12,13 @@ object NavRoutes {
     const val ORDERS   = "orders"
     const val PROFILE  = "profile"
 
+    const val PHONE_SETUP = "phone_setup"
+
+    const val EXPENSES = "expenses"
+
     // Helpers to build parameterised routes
     fun store(storeId: String) = "store/$storeId"
     fun menu(storeId: String)  = "menu/$storeId"
 }
+
+

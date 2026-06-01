@@ -32,7 +32,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +52,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,11 +77,34 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(),
     onNavigateHome: () -> Unit,
     onNavigateOrders: () -> Unit,
-    onNavigateCart: () -> Unit,
+    onNavigateExpenses: () -> Unit,
     onSignedOut: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val hostels = listOf(
+        "Agira Hall",
+        "Ambaram Hall",
+        "Amritam Hall",
+        "Ananta Hall",
+        "Anantam Hall",
+        "Dhriti Hall",
+        "FRF",
+        "FRG",
+        "Ira Hall",
+        "Neeram Hall",
+        "Prithvi Hall",
+        "Tejas Hall",
+        "Vahni Hall",
+        "Vasudha Hall - Block E",
+        "Vasudha Hall - Block G",
+        "Viyat Hall",
+        "Vyan Hall",
+        "Vyom Hall"
+    )
+
+    var expanded by remember { mutableStateOf(false) }
 
     // Show success snackbar
     LaunchedEffect(state.saveSuccess) {
@@ -106,13 +134,14 @@ fun ProfileScreen(
         },
         bottomBar = {
             HomeBottomBar(
-                currentRoute = "PROFILE",
+                currentRoute = "profile",
                 onHomeClick = onNavigateHome,
                 onOrdersClick = onNavigateOrders,
-                onCartClick = onNavigateCart,
+                onExpensesClick = onNavigateExpenses,
                 onProfileClick = {}
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
@@ -222,14 +251,51 @@ fun ProfileScreen(
                             Spacer(Modifier.height(10.dp))
 
                             // Hostel dropdown (reuse RegisterScreen's HostelDropdown if desired)
-                            OutlinedTextField(
-                                value = state.editHostel,
-                                onValueChange = { viewModel.onHostelChanged(it) },
-                                label = { Text("Hostel") },
-                                singleLine = true,
-                                colors = authTextFieldColors(),
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = {
+                                    expanded = !expanded
+                                }
+                            ) {
+
+                                OutlinedTextField(
+                                    value = state.editHostel,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    label = {
+                                        Text("Hostel")
+                                    },
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                            expanded = expanded
+                                        )
+                                    }
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = {
+                                        expanded = false
+                                    }
+                                ) {
+
+                                    hostels.forEach { hostelName ->
+
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(hostelName)
+                                            },
+                                            onClick = {
+                                                viewModel.onHostelChanged(hostelName)
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
 
                             Spacer(Modifier.height(16.dp))
 
@@ -350,7 +416,12 @@ private fun ProfileRow(label: String, value: String) {
 @Composable
 private fun ProfilePreviewLight() {
     ThaparBitesTheme(darkTheme = false) {
-        ProfileScreen(onNavigateHome = {}, onNavigateOrders = {}, onNavigateCart = {}, onSignedOut = {})
+        ProfileScreen(
+            onNavigateHome = {},
+            onNavigateOrders = {},
+            onNavigateExpenses = {},
+            onSignedOut = {}
+        )
     }
 }
 
@@ -359,7 +430,12 @@ private fun ProfilePreviewLight() {
 @Composable
 private fun ProfilePreviewDark() {
     ThaparBitesTheme(darkTheme = true) {
-        ProfileScreen(onNavigateHome = {}, onNavigateOrders = {}, onNavigateCart = {}, onSignedOut = {})
+        ProfileScreen(
+            onNavigateHome = {},
+            onNavigateOrders = {},
+            onNavigateExpenses = {},
+            onSignedOut = {}
+        )
     }
 }
 
@@ -368,7 +444,12 @@ private fun ProfilePreviewDark() {
 private fun ProfilePreviewEdit() {
     ThaparBitesTheme(darkTheme = false) {
         // To preview edit mode, set isEditMode via ViewModel or pass a fake state
-        ProfileScreen(onNavigateHome = {}, onNavigateOrders = {}, onNavigateCart = {}, onSignedOut = {})
+        ProfileScreen(
+            onNavigateHome = {},
+            onNavigateOrders = {},
+            onNavigateExpenses = {},
+            onSignedOut = {}
+        )
     }
 }
 
