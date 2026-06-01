@@ -1,216 +1,94 @@
 package com.ccs.thaparbites.ui.checkout
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ccs.thaparbites.data.dummy.CartItem
 import com.ccs.thaparbites.data.dummy.PaymentMethod
-import com.ccs.thaparbites.data.dummy.Store
-import com.ccs.thaparbites.data.dummy.UserProfile
-import com.ccs.thaparbites.data.repository.CartRepository
-import com.ccs.thaparbites.data.repository.OrderRepository
-import com.ccs.thaparbites.data.repository.StoreRepository
-import com.ccs.thaparbites.data.repository.UserRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sealed UI state
-// ─────────────────────────────────────────────────────────────────────────────
+import kotlinx.coroutines.tasks.await
 
 sealed class CheckoutUiState {
     object Idle    : CheckoutUiState()
-    object Placing : CheckoutUiState()
+    object Loading : CheckoutUiState()
     data class Success(val orderId: String) : CheckoutUiState()
     data class Error(val message: String)   : CheckoutUiState()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Consolidated screen state
-// Every property read by CheckoutScreen lives here.
-// ─────────────────────────────────────────────────────────────────────────────
+class CheckoutViewModel : ViewModel() {
 
-data class CheckoutState(
-    // loading / error / success
-    val uiState: CheckoutUiState = CheckoutUiState.Idle,
+    private val db   = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
-    // data
-    val cart:            List<CartItem> = emptyList(),
-    val store:           Store?         = null,
-    val user:            UserProfile    = UserProfile(),
+    private val _uiState = MutableStateFlow<CheckoutUiState>(CheckoutUiState.Idle)
+    val uiState: StateFlow<CheckoutUiState> = _uiState.asStateFlow()
 
-    // payment
-    val selectedPayment: PaymentMethod  = PaymentMethod.UPI,
-
-    // billing
-    val subtotal:        Double         = 0.0,
-    val deliveryFee:     Double         = 10.0,
-) {
-    /** Derived; the screen reads state.total directly. */
-    val total: Double get() = subtotal + deliveryFee
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ViewModel
-// ─────────────────────────────────────────────────────────────────────────────
-
-@HiltViewModel
-class CheckoutViewModel @Inject constructor(
-    private val orderRepository: OrderRepository,
-    private val userRepository:  UserRepository,
-    private val cartRepository:  CartRepository,   // supplies the active cart
-    private val storeRepository: StoreRepository,  // supplies the current store
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(CheckoutState())
-    /** Single state flow – collected by the screen as: val state by viewModel.state.collectAsState() */
-    val state: StateFlow<CheckoutState> = _state.asStateFlow()
-
-    // ── Initialisation ───────────────────────────────────────────────────────
-
-    init {
-        loadCheckoutData()
-    }
-
-    /**
-     * Loads cart, store, and user profile in parallel.
-     * Call this from init{} or re-call it after a retry.
-     */
-    private fun loadCheckoutData() {
-        viewModelScope.launch {
-            // Cart is already in memory — instant
-            val cart  = cartRepository.getActiveCart()
-            // Store needs a Firestore round-trip
-            val store = storeRepository.getCurrentStore()
-            // User from your existing UserRepository
-            val user  = userRepository.getUser()
-
-            if (user == null) {
-                _state.update { it.copy(uiState = CheckoutUiState.Error("Could not load user profile")) }
-                return@launch
-            }
-            if (cart.isEmpty()) {
-                _state.update { it.copy(uiState = CheckoutUiState.Error("Your cart is empty")) }
-                return@launch
-            }
-            if (store == null) {
-                _state.update { it.copy(uiState = CheckoutUiState.Error("Could not load store info")) }
-                return@launch
-            }
-
-            val subtotal = cart.sumOf {
-                (it.menuItem.price * it.quantity).toDouble()
-            }
-
-            _state.update {
-                it.copy(
-                    cart    = cart,
-                    store   = store,
-                    user    = user,
-                    subtotal = subtotal,
-                    uiState  = CheckoutUiState.Idle
-                )
-            }
-        }
-    }
-
-    // ── Payment selection ────────────────────────────────────────────────────
-
-    /**
-     * Called by the screen's PaymentOption rows:
-     *   viewModel.selectPayment(PaymentMethod.UPI)
-     *   viewModel.selectPayment(PaymentMethod.CASH)
-     */
-    fun selectPayment(method: PaymentMethod) {
-        _state.update { it.copy(selectedPayment = method) }
-    }
-
-    // ── Place order ──────────────────────────────────────────────────────────
-
-    /**
-     * Matches the exact call-site in CheckoutScreen:
-     *
-     *   viewModel.placeOrder { upiId, storeName, amount ->
-     *       launchUpiIntent(context, upiId, storeName, amount)
-     *   }
-     *
-     * The lambda is invoked (on the main thread, before persisting) only when
-     * the selected payment method is UPI, so the Intent fires at the right moment.
-     * Context stays in the UI layer – the ViewModel never touches it.
-     */
     fun placeOrder(
-        onLaunchUpiIntent: (upiId: String, storeName: String, amount: Double) -> Unit
+        cartItems: List<CartItem>,
+        subtotal: Double,
+        deliveryFee: Double,
+        total: Double,
+        paymentMethod: PaymentMethod,
+        hostel: String,
+        roomNumber: String
     ) {
-        val snap = _state.value
-
-        // ── Pre-flight guards ────────────────────────────────────────────────
-        if (snap.uiState is CheckoutUiState.Placing) return  // already in flight
-
-        val store = snap.store
-        if (store == null) {
-            _state.update { it.copy(uiState = CheckoutUiState.Error("Store information is missing")) }
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            _uiState.value = CheckoutUiState.Error("Not logged in. Please sign in again.")
             return
         }
-        if (snap.cart.isEmpty()) {
-            _state.update { it.copy(uiState = CheckoutUiState.Error("Your cart is empty")) }
+        if (cartItems.isEmpty()) {
+            _uiState.value = CheckoutUiState.Error("Your cart is empty.")
             return
         }
+
+        _uiState.value = CheckoutUiState.Loading
 
         viewModelScope.launch {
-            _state.update { it.copy(uiState = CheckoutUiState.Placing) }
+            try {
+                val orderData = hashMapOf(
+                    "userId"        to uid,
+                    "storeName"     to (cartItems.first().menuItem.storeId),
+                    "items"         to cartItems.map { ci ->
+                        mapOf(
+                            "itemId"   to ci.menuItem.id,
+                            "name"     to ci.menuItem.name,
+                            "emoji"    to ci.menuItem.emoji,
+                            "price"    to ci.menuItem.price,
+                            "quantity" to ci.quantity
+                        )
+                    },
+                    "subtotal"      to subtotal,
+                    "deliveryFee"   to deliveryFee,
+                    "total"         to total,
+                    "paymentMethod" to paymentMethod.name,
+                    "hostel"        to hostel,
+                    "roomNumber"    to roomNumber,
+                    "status"        to "PLACED",
+                    "placedAt"      to FieldValue.serverTimestamp()
+                )
 
-            // Re-fetch user inside the coroutine for freshness
-            val user = userRepository.getUser()
-            if (user == null) {
-                _state.update { it.copy(uiState = CheckoutUiState.Error("Could not load user profile")) }
-                return@launch
-            }
+                val ref = db.collection("orders").add(orderData).await()
+                _uiState.value = CheckoutUiState.Success(ref.id)
 
-            // Fire the UPI intent before persisting the order
-            if (snap.selectedPayment == PaymentMethod.UPI) {
-                onLaunchUpiIntent(store.upiId, store.name, snap.total)
-            }
-
-            val orderId = orderRepository.placeOrder(
-                cart          = snap.cart,
-                store         = store,
-                userProfile   = user,
-                paymentMethod = snap.selectedPayment,
-                subtotal      = snap.subtotal,
-                deliveryFee   = snap.deliveryFee,
-                total         = snap.total
-            )
-
-            _state.update {
-                it.copy(
-                    uiState = if (orderId != null)
-                        CheckoutUiState.Success(orderId)
-                    else
-                        CheckoutUiState.Error("Failed to place order. Please try again.")
+            } catch (e: Exception) {
+                _uiState.value = CheckoutUiState.Error(
+                    e.message ?: "Failed to place order. Please try again."
                 )
             }
         }
     }
 
-    // ── Error handling ───────────────────────────────────────────────────────
-
-    /**
-     * Called when the user taps the error banner:
-     *   viewModel.dismissError()
-     */
-    fun dismissError() {
-        _state.update { it.copy(uiState = CheckoutUiState.Idle) }
-    }
-
-    /**
-     * Call from the success screen's "back to home" to reset before re-entry.
-     */
-    fun resetState() {
-        _state.update { it.copy(uiState = CheckoutUiState.Idle) }
+    // Manual factory — no Hilt needed, matches your MainActivity pattern
+    class Factory : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            CheckoutViewModel() as T
     }
 }

@@ -1,481 +1,242 @@
 package com.ccs.thaparbites.ui.checkout
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.data.dummy.PaymentMethod
-import com.ccs.thaparbites.ui.theme.Crimson500
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen entry point
-// ─────────────────────────────────────────────────────────────────────────────
+import com.ccs.thaparbites.ui.cart.BillRow
+import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(
-    viewModel: CheckoutViewModel = hiltViewModel(),
     onBack: () -> Unit,
-    onOrderPlaced: (orderId: String) -> Unit
+    onOrderPlaced: (orderId: String) -> Unit,
+    cartViewModel: SharedCartViewModel = viewModel(),
+    checkoutViewModel: CheckoutViewModel = viewModel(factory = CheckoutViewModel.Factory())
 ) {
-    val state   by viewModel.state.collectAsState()
-    val context = LocalContext.current
+    val cartItems       by cartViewModel.cartItems.collectAsState()
+    val subtotal        = cartViewModel.subtotal
+    val deliveryFee     = cartViewModel.deliveryFee
+    val total           = cartViewModel.total
+    val uiState         by checkoutViewModel.uiState.collectAsState()
 
-    // Navigate to confirmation screen as soon as the order is confirmed
-    LaunchedEffect(state.uiState) {
-        if (state.uiState is CheckoutUiState.Success) {
-            onOrderPlaced((state.uiState as CheckoutUiState.Success).orderId)
+    var selectedPayment by remember { mutableStateOf(PaymentMethod.UPI) }
+    var hostel          by remember { mutableStateOf("") }
+    var roomNumber      by remember { mutableStateOf("") }
+    var showDialog      by remember { mutableStateOf(false) }
+
+    // React to successful order placement
+    LaunchedEffect(uiState) {
+        if (uiState is CheckoutUiState.Success) {
+            cartViewModel.clearCart()
+            onOrderPlaced((uiState as CheckoutUiState.Success).orderId)
         }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Confirm Order", fontWeight = FontWeight.Bold) },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Place order for ₹${total.toInt()}?")
+                    Text(
+                        "Payment: ${if (selectedPayment == PaymentMethod.UPI) "UPI" else "Cash on Delivery"}",
+                        fontSize = 13.sp,
+                        color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showDialog = false
+                    checkoutViewModel.placeOrder(
+                        cartItems     = cartItems,
+                        subtotal      = subtotal,
+                        deliveryFee   = deliveryFee,
+                        total         = total,
+                        paymentMethod = selectedPayment,
+                        hostel        = hostel,
+                        roomNumber    = roomNumber
+                    )
+                }) {
+                    Text("Place Order", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text  = "Checkout",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                },
+                title = { Text("Checkout", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor          = Crimson500,
-                    titleContentColor       = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         bottomBar = {
-            CheckoutBottomBar(
-                total         = state.total,
-                isLoading     = state.uiState is CheckoutUiState.Placing,
-                paymentMethod = state.selectedPayment,
-                onPlaceOrder  = {
-                    viewModel.placeOrder { upiId, storeName, amount ->
-                        launchUpiIntent(context, upiId, storeName, amount)
+            Surface(shadowElevation = 10.dp, color = MaterialTheme.colorScheme.surface) {
+                Button(
+                    onClick  = { showDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .height(52.dp),
+                    shape    = RoundedCornerShape(14.dp),
+                    enabled  = cartItems.isNotEmpty() && uiState !is CheckoutUiState.Loading
+                ) {
+                    if (uiState is CheckoutUiState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color    = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            "Place Order  •  ₹${total.toInt()}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 16.sp
+                        )
                     }
                 }
-            )
+            }
         }
-    ) { innerPadding ->
-
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-            // ── Error banner ─────────────────────────────────────────────────
-            AnimatedVisibility(
-                visible = state.uiState is CheckoutUiState.Error,
-                enter   = expandVertically() + fadeIn(),
-                exit    = shrinkVertically() + fadeOut()
-            ) {
-                val message = (state.uiState as? CheckoutUiState.Error)?.message.orEmpty()
-                Surface(
-                    color    = MaterialTheme.colorScheme.errorContainer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.dismissError() }
+            // Error banner
+            if (uiState is CheckoutUiState.Error) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text     = "⚠️  $message  (tap to dismiss)",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        style    = MaterialTheme.typography.bodySmall,
-                        color    = MaterialTheme.colorScheme.onErrorContainer
+                        (uiState as CheckoutUiState.Error).message,
+                        modifier = Modifier.padding(12.dp),
+                        color    = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 13.sp
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // ── Store info ───────────────────────────────────────────────────
-            state.store?.let { store ->
-                SectionCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text     = store.emoji,
-                            fontSize = 32.sp
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text       = store.name,
-                                style      = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text  = store.location,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── Delivery details ─────────────────────────────────────────────
-            SectionCard(title = "Delivery To") {
-                val user = state.user
-                DetailRow(label = "Name",   value = user.name)
-                DetailRow(label = "Phone",  value = "+91 ${user.phone}")
-                DetailRow(label = "Hostel", value = user.hostelName)
-            }
-
-            // ── Order summary ────────────────────────────────────────────────
-            SectionCard(title = "Order Summary") {
-                state.cart.forEach { item ->
+            // Order summary
+            CheckoutCard(title = "Order Summary") {
+                cartItems.forEach { cartItem ->
                     Row(
-                        modifier              = Modifier
+                        modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 5.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text     = "${item.menuItem.emoji} ${item.menuItem.name} × ${item.quantity}",
-                            style    = MaterialTheme.typography.bodyMedium,
+                            "${cartItem.menuItem.emoji}  ${cartItem.menuItem.name} × ${cartItem.quantity}",
+                            fontSize = 14.sp,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text       = "₹${"%.0f".format(item.menuItem.price * item.quantity)}",
-                            style      = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            "₹${cartItem.menuItem.price * cartItem.quantity}",
+                            fontSize   = 14.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                BillRow("Subtotal",     "₹${subtotal.toInt()}")
+                BillRow("Delivery fee", "₹${deliveryFee.toInt()}")
+                BillRow("Total",        "₹${total.toInt()}", bold = true)
+            }
 
-                Spacer(Modifier.height(8.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(8.dp))
-
-                BillRow(label = "Subtotal",     value = "₹${"%.0f".format(state.subtotal)}")
-                BillRow(label = "Delivery fee", value = "₹${"%.0f".format(state.deliveryFee)}")
-
-                Spacer(Modifier.height(4.dp))
-
-                BillRow(
-                    label = "Total",
-                    value = "₹${"%.0f".format(state.total)}",
-                    bold  = true,
-                    color = Crimson500
+            // Delivery details
+            CheckoutCard(title = "Delivery Details") {
+                OutlinedTextField(
+                    value         = hostel,
+                    onValueChange = { hostel = it },
+                    label         = { Text("Hostel / Block Name") },
+                    placeholder   = { Text("e.g. Kailash Boys Hostel") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(10.dp),
+                    singleLine    = true
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value         = roomNumber,
+                    onValueChange = { roomNumber = it },
+                    label         = { Text("Room Number") },
+                    placeholder   = { Text("e.g. 204") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(10.dp),
+                    singleLine    = true
                 )
             }
 
-            // ── Payment method ───────────────────────────────────────────────
-            SectionCard(title = "Payment Method") {
-                val store      = state.store
-                val allowCash  = store?.paymentMethod == PaymentMethod.CASH
-
-                PaymentOption(
-                    label    = "UPI / Online",
-                    icon     = "📲",
-                    selected = state.selectedPayment != PaymentMethod.CASH,
-                    onClick  = { viewModel.selectPayment(PaymentMethod.UPI) }
-                )
-
-                if (allowCash) {
-                    Spacer(Modifier.height(8.dp))
-                    PaymentOption(
-                        label    = "Cash on Delivery",
-                        icon     = "💵",
-                        selected = state.selectedPayment == PaymentMethod.CASH,
-                        onClick  = { viewModel.selectPayment(PaymentMethod.CASH) }
-                    )
-                } else {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text  = "This store only accepts UPI payments.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            // Payment
+            CheckoutCard(title = "Payment Method") {
+                PaymentMethod.entries.forEach { method ->
+                    Row(
+                        modifier          = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedPayment == method,
+                            onClick  = { selectedPayment = method }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text     = if (method == PaymentMethod.UPI) "💳  UPI" else "💵  Cash on Delivery",
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Private composable building blocks
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun SectionCard(
-    title:   String? = null,
-    content: @Composable () -> Unit
-) {
-    Surface(
-        modifier       = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape          = MaterialTheme.shapes.medium,
-        tonalElevation = 2.dp
+fun CheckoutCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            if (title != null) {
-                Text(
-                    text       = title,
-                    style      = MaterialTheme.typography.labelLarge,
-                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(10.dp))
-            }
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(modifier = Modifier.height(12.dp))
             content()
         }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text       = value,
-            style      = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun BillRow(
-    label: String,
-    value: String,
-    bold:  Boolean = false,
-    color: Color   = MaterialTheme.colorScheme.onSurface
-) {
-    val textStyle = if (bold) MaterialTheme.typography.bodyMedium
-    else      MaterialTheme.typography.bodySmall
-    val weight    = if (bold) FontWeight.Bold else FontWeight.Normal
-
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = label, style = textStyle, fontWeight = weight, color = color)
-        Text(text = value, style = textStyle, fontWeight = weight, color = color)
-    }
-}
-
-@Composable
-private fun PaymentOption(
-    label:    String,
-    icon:     String,
-    selected: Boolean,
-    onClick:  () -> Unit
-) {
-    val borderColor by animateColorAsState(
-        targetValue  = if (selected) Crimson500
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-        animationSpec = tween(200),
-        label        = "paymentBorder"
-    )
-    val borderWidth by animateDpAsState(
-        targetValue  = if (selected) 2.dp else 1.dp,
-        animationSpec = tween(200),
-        label        = "paymentBorderWidth"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
-            .border(width = borderWidth, color = borderColor, shape = MaterialTheme.shapes.small)
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = icon, fontSize = 22.sp)
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text       = label,
-            style      = MaterialTheme.typography.bodyMedium,
-            modifier   = Modifier.weight(1f),
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-        )
-        if (selected) {
-            Box(
-                modifier         = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Crimson500),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector        = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint               = Color.White,
-                    modifier           = Modifier.size(14.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckoutBottomBar(
-    total:         Double,
-    isLoading:     Boolean,
-    paymentMethod: PaymentMethod,
-    onPlaceOrder:  () -> Unit
-) {
-    Surface(
-        tonalElevation = 8.dp,
-        modifier       = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Total display
-            Column {
-                Text(
-                    text  = "Total",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text       = "₹${"%.0f".format(total)}",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color      = Crimson500
-                )
-            }
-
-            // CTA button
-            Button(
-                onClick  = onPlaceOrder,
-                enabled  = !isLoading,
-                colors   = ButtonDefaults.buttonColors(containerColor = Crimson500),
-                shape    = MaterialTheme.shapes.extraLarge,
-                modifier = Modifier.height(48.dp)
-            ) {
-                AnimatedContent(
-                    targetState  = isLoading,
-                    transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
-                    label        = "placeOrderButton"
-                ) { loading ->
-                    if (loading) {
-                        CircularProgressIndicator(
-                            color       = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier    = Modifier.size(20.dp)
-                        )
-                    } else {
-                        val label = if (paymentMethod == PaymentMethod.CASH)
-                            "Place Order"
-                        else
-                            "Pay ₹${"%.0f".format(total)}"
-                        Text(text = label, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UPI Intent helper  (Context stays in the UI layer, never the ViewModel)
-// ─────────────────────────────────────────────────────────────────────────────
-
-fun launchUpiIntent(
-    context:   Context,
-    upiId:     String,
-    storeName: String,
-    amount:    Double
-) {
-    val uri    = "upi://pay?pa=$upiId" +
-            "&pn=${Uri.encode(storeName)}" +
-            "&am=${"%.2f".format(amount)}" +
-            "&cu=INR" +
-            "&tn=ThaparBites"
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    try {
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        // No UPI app installed — in production show a Snackbar here
     }
 }

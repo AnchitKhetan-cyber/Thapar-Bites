@@ -1,9 +1,11 @@
 package com.ccs.thaparbites
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,7 +16,6 @@ import com.ccs.thaparbites.navigation.NavRoutes
 import com.ccs.thaparbites.ui.auth.LoginScreen
 import com.ccs.thaparbites.ui.auth.RegisterScreen
 import com.ccs.thaparbites.ui.cart.CartScreen
-import com.ccs.thaparbites.ui.checkout.CheckoutScreen
 import com.ccs.thaparbites.ui.checkout.CheckoutViewModel
 import com.ccs.thaparbites.ui.home.HomeScreen
 import com.ccs.thaparbites.ui.menu.MenuScreen
@@ -26,6 +27,7 @@ import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 import com.ccs.thaparbites.ui.splash.SplashScreen
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
 import androidx.lifecycle.ViewModelProvider.Factory
+import com.ccs.thaparbites.ui.checkout.CheckoutScreen
 import com.example.thaparbites.util.FirestoreSeedData
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -42,6 +44,11 @@ class MainActivity : ComponentActivity() {
 
                 // Shared cart scoped to Activity — no Hilt needed
                 val sharedCartViewModel: SharedCartViewModel = viewModel()
+
+
+                LaunchedEffect(Unit) {
+                    Log.d("MENU_DEBUG", "MenuScreen Opened")
+                }
 
                 NavHost(
                     navController    = navController,
@@ -92,6 +99,7 @@ class MainActivity : ComponentActivity() {
                     composable(NavRoutes.HOME) {
                         HomeScreen(
                             onStoreClick = { store ->
+                                Log.d("MENU_DEBUG", "Clicked store id = ${store.id}")
                                 navController.navigate(NavRoutes.menu(store.id))
                             },
                             onCartClick = {
@@ -112,17 +120,23 @@ class MainActivity : ComponentActivity() {
                         arguments = listOf(navArgument("storeId") { type = NavType.StringType })
                     ) { backStackEntry ->
                         val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
+
+                        Log.d("MENU_DEBUG", "Received storeId = $storeId")
+
                         MenuScreen(
-                            storeId   = storeId,
-                            onBack    = { navController.popBackStack() },
+                            storeId = storeId,
+                            onBack = { navController.popBackStack() },
                             onViewCart = { navController.navigate(NavRoutes.CART) }
                         )
                     }
 
                     composable(NavRoutes.CART) {
                         CartScreen(
+                            cartViewModel = viewModel(),
                             onBack = { navController.popBackStack() },
-                            onCheckout = { navController.navigate(NavRoutes.CHECKOUT) }
+                            onNavigateToCheckout = {
+                                navController.navigate(NavRoutes.CHECKOUT)
+                            }
                         )
                     }
 
