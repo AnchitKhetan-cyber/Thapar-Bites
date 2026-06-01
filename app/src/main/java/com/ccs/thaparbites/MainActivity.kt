@@ -26,7 +26,10 @@ import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 import com.ccs.thaparbites.ui.splash.SplashScreen
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
 import androidx.lifecycle.ViewModelProvider.Factory
+import dagger.hilt.android.AndroidEntryPoint
 
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,7 +126,6 @@ class MainActivity : ComponentActivity() {
 
                     composable(NavRoutes.CHECKOUT) {
                         CheckoutScreen(
-                            viewModel = viewModel(),
                             onBack = { navController.popBackStack() },
                             onOrderPlaced = { _ ->
                                 navController.navigate(NavRoutes.ORDERS) {
