@@ -26,7 +26,9 @@ import com.ccs.thaparbites.ui.shared.SharedCartViewModel
 import com.ccs.thaparbites.ui.splash.SplashScreen
 import com.ccs.thaparbites.ui.theme.ThaparBitesTheme
 import androidx.lifecycle.ViewModelProvider.Factory
+import com.example.thaparbites.util.FirestoreSeedData
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 
 @AndroidEntryPoint

@@ -77,6 +77,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
 
     // Coroutines (Play Services)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     // Credentials / Google Sign-In

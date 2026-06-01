@@ -121,7 +121,7 @@ fun LoginContent(
                 useCenter = true,
                 topLeft = androidx.compose.ui.geometry.Offset(
                     -size.width * 0.1f,
-                    -size.height * 0.4f
+                    -size.height * 0.8f
                 ),
                 size = androidx.compose.ui.geometry.Size(
                     size.width * 1.2f,

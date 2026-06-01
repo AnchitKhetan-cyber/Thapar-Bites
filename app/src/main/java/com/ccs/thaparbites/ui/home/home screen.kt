@@ -1,7 +1,6 @@
 package com.ccs.thaparbites.ui.home
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.data.dummy.*
 import com.ccs.thaparbites.ui.theme.*
 
@@ -36,77 +37,140 @@ fun HomeScreen(
     onStoreClick: (Store) -> Unit = {},
     onCartClick: () -> Unit = {},
     onOrdersClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    homeViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory())
 ) {
+    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     var selectedLocation by remember { mutableStateOf(campusLocations.first()) }
-    val stores = dummyStores.filter { it.location == selectedLocation }
 
     Scaffold(
         topBar = { HomeTopBar(cartItemCount = cartItemCount, onCartClick = onCartClick) },
         bottomBar = {
             HomeBottomBar(
-                onHomeClick = {},
-                onOrdersClick = onOrdersClick,
-                onCartClick = onCartClick,
+                onHomeClick    = {},
+                onOrdersClick  = onOrdersClick,
+                onCartClick    = onCartClick,
                 onProfileClick = onProfileClick,
-                cartCount = cartItemCount
+                cartCount      = cartItemCount
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            // ── Greeting banner ───────────────────────────
-            item {
-                GreetingBanner(userName = dummyUser.name)
-            }
 
-            // ── Location chips ────────────────────────────
-            item {
-                LocationSelector(
-                    locations = campusLocations,
-                    selected = selectedLocation,
-                    onSelect = { selectedLocation = it }
-                )
-            }
+        when (val state = uiState) {
 
-            // ── Section header ────────────────────────────
-            item {
-                Row(
+            // ── Loading ───────────────────────────────────
+            is HomeUiState.Loading -> {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "${stores.size} Places",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = "at $selectedLocation",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Loading canteens...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            // ── Store cards ───────────────────────────────
-            if (stores.isEmpty()) {
-                item { EmptyLocationState(location = selectedLocation) }
-            } else {
-                items(stores, key = { it.id }) { store ->
-                    StoreCard(
-                        store = store,
-                        onClick = { onStoreClick(store) },
-                        modifier = Modifier.animateItem()
-                    )
+            // ── Error ─────────────────────────────────────
+            is HomeUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Text("😕", fontSize = 48.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Couldn't load canteens",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            state.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Button(onClick = { homeViewModel.retry() }) {
+                            Text("Try Again")
+                        }
+                    }
+                }
+            }
+
+            // ── Success ───────────────────────────────────
+            is HomeUiState.Success -> {
+                val stores = state.stores.filter { it.location == selectedLocation }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    // Greeting banner
+                    item {
+                        GreetingBanner(userName = state.userName)
+                    }
+
+                    // Location chips
+                    item {
+                        LocationSelector(
+                            locations = campusLocations,
+                            selected  = selectedLocation,
+                            onSelect  = { selectedLocation = it }
+                        )
+                    }
+
+                    // Section header
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${stores.size} Places",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = "at $selectedLocation",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Store cards
+                    if (stores.isEmpty()) {
+                        item { EmptyLocationState(location = selectedLocation) }
+                    } else {
+                        items(stores, key = { it.id }) { store ->
+                            StoreCard(
+                                store   = store,
+                                onClick = { onStoreClick(store) },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -147,7 +211,7 @@ private fun HomeTopBar(cartItemCount: Int, onCartClick: () -> Unit) {
                     if (cartItemCount > 0) {
                         Badge(
                             containerColor = Color.White,
-                            contentColor = Crimson500
+                            contentColor   = Crimson500
                         ) { Text(cartItemCount.toString(), fontWeight = FontWeight.Bold) }
                     }
                 }
@@ -180,39 +244,39 @@ fun HomeBottomBar(
     ) {
         NavigationBarItem(
             selected = currentRoute == "home",
-            onClick = onHomeClick,
+            onClick  = onHomeClick,
             icon = {
                 Icon(
                     if (currentRoute == "home") Icons.Filled.Home else Icons.Outlined.Home,
                     contentDescription = "Home"
                 )
             },
-            label = { Text("Home") },
+            label  = { Text("Home") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
         NavigationBarItem(
             selected = currentRoute == "orders",
-            onClick = onOrdersClick,
+            onClick  = onOrdersClick,
             icon = {
                 Icon(
                     if (currentRoute == "orders") Icons.Filled.Receipt else Icons.Outlined.Receipt,
                     contentDescription = "Orders"
                 )
             },
-            label = { Text("Orders") },
+            label  = { Text("Orders") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
         NavigationBarItem(
             selected = currentRoute == "cart",
-            onClick = onCartClick,
+            onClick  = onCartClick,
             icon = {
                 BadgedBox(badge = {
                     if (cartCount > 0) Badge(containerColor = Crimson500) {
@@ -225,27 +289,27 @@ fun HomeBottomBar(
                     )
                 }
             },
-            label = { Text("Cart") },
+            label  = { Text("Cart") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
         NavigationBarItem(
             selected = currentRoute == "profile",
-            onClick = onProfileClick,
+            onClick  = onProfileClick,
             icon = {
                 Icon(
                     if (currentRoute == "profile") Icons.Filled.Person else Icons.Outlined.Person,
                     contentDescription = "Profile"
                 )
             },
-            label = { Text("Profile") },
+            label  = { Text("Profile") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                indicatorColor    = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
     }
@@ -260,21 +324,19 @@ private fun GreetingBanner(userName: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-            )
+            .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
             .padding(horizontal = 16.dp, vertical = 20.dp)
     ) {
         Column {
             Text(
-                text = "Hey, ${userName.split(" ").first()} 👋",
+                text  = "Hey, ${userName.split(" ").first()} 👋",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "What are you craving today?",
+                text  = "What are you craving today?",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -294,7 +356,7 @@ private fun LocationSelector(
 ) {
     Column {
         Text(
-            text = "📍 Choose Location",
+            text  = "📍 Choose Location",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
@@ -307,23 +369,23 @@ private fun LocationSelector(
                 val isSelected = location == selected
                 FilterChip(
                     selected = isSelected,
-                    onClick = { onSelect(location) },
+                    onClick  = { onSelect(location) },
                     label = {
                         Text(
-                            text = location,
+                            text       = location,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = Color.White,
+                        selectedLabelColor     = Color.White,
                         selectedLeadingIconColor = Color.White
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = isSelected,
+                        enabled             = true,
+                        selected            = isSelected,
                         selectedBorderColor = MaterialTheme.colorScheme.primary,
-                        borderColor = MaterialTheme.colorScheme.outline
+                        borderColor         = MaterialTheme.colorScheme.outline
                     )
                 )
             }
@@ -332,7 +394,7 @@ private fun LocationSelector(
 }
 
 // ─────────────────────────────────────────────
-//  Store Card
+//  Store Card  (unchanged from original)
 // ─────────────────────────────────────────────
 
 @Composable
@@ -343,13 +405,13 @@ fun StoreCard(
 ) {
     val ext = MaterialTheme.extendedColors
     val statusColor = when (store.status) {
-        StoreStatus.OPEN -> ext.storeOpen
-        StoreStatus.BUSY -> ext.storeBusy
+        StoreStatus.OPEN   -> ext.storeOpen
+        StoreStatus.BUSY   -> ext.storeBusy
         StoreStatus.CLOSED -> ext.storeClosed
     }
     val statusLabel = when (store.status) {
-        StoreStatus.OPEN -> "Open"
-        StoreStatus.BUSY -> "Busy"
+        StoreStatus.OPEN   -> "Open"
+        StoreStatus.BUSY   -> "Busy"
         StoreStatus.CLOSED -> "Closed"
     }
 
@@ -358,15 +420,14 @@ fun StoreCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(enabled = store.status != StoreStatus.CLOSED, onClick = onClick),
-        shape = CardShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape    = CardShape,
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Emoji avatar
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -382,13 +443,12 @@ fun StoreCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = store.name,
-                        style = MaterialTheme.typography.titleMedium,
+                        text       = store.name,
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                        color      = MaterialTheme.colorScheme.onSurface,
+                        modifier   = Modifier.weight(1f)
                     )
-                    // Status badge
                     Box(
                         modifier = Modifier
                             .clip(BadgeShape)
@@ -396,10 +456,10 @@ fun StoreCard(
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = statusLabel,
-                            style = MaterialTheme.typography.labelSmall,
+                            text       = statusLabel,
+                            style      = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = statusColor
+                            color      = statusColor
                         )
                     }
                 }
@@ -407,24 +467,21 @@ fun StoreCard(
                 Spacer(Modifier.height(3.dp))
 
                 Text(
-                    text = store.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text     = store.description,
+                    style    = MaterialTheme.typography.bodySmall,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
 
                 Spacer(Modifier.height(8.dp))
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Rating
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.Star, contentDescription = null,
-                            tint = Gold400, modifier = Modifier.size(14.dp)
-                        )
+                        Icon(Icons.Filled.Star, contentDescription = null,
+                            tint = Gold400, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(3.dp))
                         Text(
                             "${store.rating} (${store.reviewCount})",
@@ -432,34 +489,29 @@ fun StoreCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // ETA
                     if (store.status != StoreStatus.CLOSED) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.AccessTime, contentDescription = null,
+                            Icon(Icons.Filled.AccessTime, contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
+                                modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(3.dp))
                             Text(
                                 "${store.etaMinutes} min",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
-                    // Payment badge
                     val payLabel = if (store.paymentMethod == PaymentMethod.CASH) "UPI & Cash" else "UPI Only"
                     Text(
-                        text = payLabel,
+                        text  = payLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
-        // Closed overlay hint
         if (store.status == StoreStatus.CLOSED) {
             HorizontalDivider()
             Row(
@@ -494,9 +546,9 @@ private fun EmptyLocationState(location: String) {
         Spacer(Modifier.height(12.dp))
         Text(
             "No stores at $location yet",
-            style = MaterialTheme.typography.titleMedium,
+            style      = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color      = MaterialTheme.colorScheme.onBackground
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -514,17 +566,11 @@ private fun EmptyLocationState(location: String) {
 @Preview(showBackground = true, name = "Home – Light")
 @Composable
 private fun HomePreviewLight() {
-    ThaparBitesTheme(darkTheme = false) {
-        HomeScreen(cartItemCount = 2)
-    }
+    ThaparBitesTheme(darkTheme = false) { HomeScreen(cartItemCount = 2) }
 }
 
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Home – Dark")
 @Composable
 private fun HomePreviewDark() {
-    ThaparBitesTheme(darkTheme = true) {
-        HomeScreen(cartItemCount = 0)
-    }
+    ThaparBitesTheme(darkTheme = true) { HomeScreen(cartItemCount = 0) }
 }
-
-
