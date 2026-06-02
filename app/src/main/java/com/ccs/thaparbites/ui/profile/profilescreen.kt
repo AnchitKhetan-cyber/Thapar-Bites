@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -106,12 +109,20 @@ fun ProfileScreen(
 
     var expanded by remember { mutableStateOf(false) }
 
+    val focusManager = LocalFocusManager.current
+
     // Show success snackbar
     LaunchedEffect(state.saveSuccess) {
         if (state.saveSuccess) snackbarHostState.showSnackbar("Profile updated ✓")
     }
 
     Scaffold(
+        modifier = Modifier.clickable(
+            indication = null,
+            interactionSource = remember { MutableInteractionSource() }
+        ){
+            focusManager.clearFocus()
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Profile", style = MaterialTheme.typography.titleMedium) },
@@ -245,7 +256,7 @@ fun ProfileScreen(
                                 prefix = { Text("+91 ") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                colors = authTextFieldColors(),
+
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(Modifier.height(10.dp))

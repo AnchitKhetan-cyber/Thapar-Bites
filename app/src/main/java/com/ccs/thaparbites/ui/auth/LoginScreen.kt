@@ -95,6 +95,7 @@ fun LoginScreen(
 //  Stateless content
 // ─────────────────────────────────────────────
 
+@Preview
 @Composable
 fun LoginContent(
     uiState: LoginUiState,
