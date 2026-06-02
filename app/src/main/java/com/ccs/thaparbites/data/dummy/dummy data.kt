@@ -2,9 +2,6 @@ package com.ccs.thaparbites.data.dummy
 
 import java.util.Date
 
-// ─────────────────────────────────────────────
-//  Data Models
-// ─────────────────────────────────────────────
 
 enum class StoreStatus { OPEN, CLOSED, BUSY }
 enum class PaymentMethod { CASH, UPI }  // match repository exactly
@@ -63,15 +60,10 @@ data class UserProfile(
     val hostelName: String = ""
 )
 
-// ─────────────────────────────────────────────
-//  Campus Locations
-// ─────────────────────────────────────────────
+
 
 val campusLocations = listOf("COS", "Kravings", "G-Block", "Aahar", "TSLAS")
 
-// ─────────────────────────────────────────────
-//  Dummy Stores
-// ─────────────────────────────────────────────
 
 val dummyStores = listOf(
     Store("s1","Chai Point","COS","Freshly brewed chai, snacks & more",4.5f,210,StoreStatus.OPEN,8,PaymentMethod.CASH,"8 AM – 10 PM","☕"),
@@ -125,9 +117,6 @@ val dummyMenuItems = listOf(
     MenuItem("m23","s9","Paneer Bhurji","Scrambled cottage cheese",90,        "Mains",true,true,"🧀"),
 )
 
-// ─────────────────────────────────────────────
-//  Dummy Orders
-// ─────────────────────────────────────────────
 
 val dummyOrders = listOf(
     Order(
@@ -164,9 +153,7 @@ val dummyOrders = listOf(
     )
 )
 
-// ─────────────────────────────────────────────
-//  Dummy User
-// ─────────────────────────────────────────────
+
 
 val dummyUser = UserProfile(
     name = "Arjun Sharma",

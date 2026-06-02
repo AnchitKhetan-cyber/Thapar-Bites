@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +34,8 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
@@ -40,6 +44,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -60,6 +65,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -164,49 +171,120 @@ fun ProfileScreen(
         ) {
 
             // ── Avatar header ──────────────────────────────────────────────
-            Spacer(Modifier.height(24.dp))
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Crimson500,
+                                Color(0xFFFF7043)
+                            )
+                        )
+                    )
             ) {
-                // Initials circle
-                val initials = state.user.name
-                    .split(" ")
-                    .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-                    .take(2)
-                    .joinToString("")
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(Crimson500),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
+                    val initials = state.user.name
+                        .split(" ")
+                        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+                        .take(2)
+                        .joinToString("")
+
+                    Box(
+                        modifier = Modifier.size(130.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .shadow(20.dp, CircleShape)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                initials,
+                                color = Crimson500,
+                                fontSize = 42.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Crimson500),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
                     Text(
-                        initials,
+                        text = state.user.name,
                         color = Color.White,
-                        fontSize = 28.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
+
+                    Text(
+                        text = state.user.email,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                Text(
-                    state.user.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    state.user.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
             Spacer(Modifier.height(24.dp))
 
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .offset(y = (-20).dp),
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+
+                    Text(
+                        text = "Profile Completion",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    LinearProgressIndicator(
+                        progress = { 1f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "100% Complete",
+                        color = Crimson500,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             // ── Error banner ───────────────────────────────────────────────
             AnimatedVisibility(visible = state.error != null) {
                 Surface(
@@ -223,119 +301,139 @@ fun ProfileScreen(
             }
 
             // ── Info section ───────────────────────────────────────────────
-            ProfileSectionCard(title = "Account Info") {
-                AnimatedContent(
-                    targetState = state.isEditMode,
-                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) }
-                ) { editing ->
-                    if (!editing) {
-                        // View mode
-                        Column {
-                            ProfileRow(label = "Name", value = state.user.name)
-                            Divider(modifier = Modifier.padding(vertical = 6.dp))
-                            ProfileRow(label = "Email", value = state.user.email)
-                            Divider(modifier = Modifier.padding(vertical = 6.dp))
-                            ProfileRow(label = "Phone", value = "+91 ${state.user.phone}")
-                            Divider(modifier = Modifier.padding(vertical = 6.dp))
-                            ProfileRow(label = "Hostel", value = state.user.hostelName)
-                        }
-                    } else {
-                        // Edit mode
-                        Column {
-                            // Non-editable
-                            ProfileRow(label = "Name", value = state.user.name)
-                            Divider(modifier = Modifier.padding(vertical = 6.dp))
-                            ProfileRow(label = "Email", value = state.user.email)
-                            Spacer(Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .offset(y = (-35).dp)
+            ){
+                ProfileSectionCard(title = "Account Info") {
+                    AnimatedContent(
+                        targetState = state.isEditMode,
+                        transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) }
+                    ) { editing ->
+                        if (!editing) {
+                            // View mode
+                            Column {
 
-                            // Phone
-                            OutlinedTextField(
-                                value = state.editPhone,
-                                onValueChange = { viewModel.onPhoneChanged(it) },
-                                label = { Text("Phone") },
-                                prefix = { Text("+91 ") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(10.dp))
-
-                            // Hostel dropdown (reuse RegisterScreen's HostelDropdown if desired)
-                            ExposedDropdownMenuBox(
-                                expanded = expanded,
-                                onExpandedChange = {
-                                    expanded = !expanded
-                                }
-                            ) {
-
-                                OutlinedTextField(
-                                    value = state.editHostel,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    label = {
-                                        Text("Hostel")
-                                    },
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(
-                                            expanded = expanded
-                                        )
-                                    }
+                                ProfileInfoCard(
+                                    title = "👤 Name",
+                                    value = state.user.name
                                 )
 
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = {
-                                        expanded = false
-                                    }
-                                ) {
+                                ProfileInfoCard(
+                                    title = "📧 Email",
+                                    value = state.user.email
+                                )
 
-                                    hostels.forEach { hostelName ->
+                                ProfileInfoCard(
+                                    title = "📱 Phone",
+                                    value = "+91 ${state.user.phone}"
+                                )
 
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(hostelName)
-                                            },
-                                            onClick = {
-                                                viewModel.onHostelChanged(hostelName)
-                                                expanded = false
-                                            }
-                                        )
-                                    }
-                                }
+                                ProfileInfoCard(
+                                    title = "🏠 Hostel",
+                                    value = state.user.hostelName
+                                )
                             }
+                        } else {
+                            // Edit mode
+                            Column {
+                                // Non-editable
+                                ProfileRow(label = "Name", value = state.user.name)
+                                Divider(modifier = Modifier.padding(vertical = 6.dp))
+                                ProfileRow(label = "Email", value = state.user.email)
+                                Spacer(Modifier.height(12.dp))
 
-                            Spacer(Modifier.height(16.dp))
+                                // Phone
+                                OutlinedTextField(
+                                    value = state.editPhone,
+                                    onValueChange = { viewModel.onPhoneChanged(it) },
+                                    label = { Text("Phone") },
+                                    prefix = { Text("+91 ") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                TextButton(
-                                    onClick = { viewModel.exitEditMode() },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(10.dp))
+
+                                // Hostel dropdown (reuse RegisterScreen's HostelDropdown if desired)
+                                ExposedDropdownMenuBox(
+                                    expanded = expanded,
+                                    onExpandedChange = {
+                                        expanded = !expanded
+                                    }
                                 ) {
-                                    Text("Cancel")
+
+                                    OutlinedTextField(
+                                        value = state.editHostel,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .menuAnchor(),
+                                        label = {
+                                            Text("Hostel")
+                                        },
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                                expanded = expanded
+                                            )
+                                        }
+                                    )
+
+                                    ExposedDropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = {
+                                            expanded = false
+                                        }
+                                    ) {
+
+                                        hostels.forEach { hostelName ->
+
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(hostelName)
+                                                },
+                                                onClick = {
+                                                    viewModel.onHostelChanged(hostelName)
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
-                                Button(
-                                    onClick = { viewModel.saveChanges() },
-                                    enabled = !state.isSaving,
-                                    colors = ButtonDefaults.buttonColors(containerColor = Crimson500),
-                                    shape = MaterialTheme.shapes.extraLarge,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    if (state.isSaving) {
-                                        CircularProgressIndicator(
-                                            color = Color.White,
-                                            strokeWidth = 2.dp,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    } else {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Filled.Check, contentDescription = null,
-                                                modifier = Modifier.size(16.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("Save", fontWeight = FontWeight.SemiBold)
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    TextButton(
+                                        onClick = { viewModel.exitEditMode() },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Cancel")
+                                    }
+                                    Button(
+                                        onClick = { viewModel.saveChanges() },
+                                        enabled = !state.isSaving,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Crimson500),
+                                        shape = MaterialTheme.shapes.extraLarge,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        if (state.isSaving) {
+                                            CircularProgressIndicator(
+                                                color = Color.White,
+                                                strokeWidth = 2.dp,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        } else {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    Icons.Filled.Check, contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("Save", fontWeight = FontWeight.SemiBold)
+                                            }
                                         }
                                     }
                                 }
@@ -381,26 +479,70 @@ fun ProfileScreen(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProfileSectionCard(title: String, content: @Composable () -> Unit) {
-    Surface(
+private fun ProfileSectionCard(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.medium,
-        tonalElevation = 2.dp
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 10.dp
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
             Text(
                 title,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
             )
-            Spacer(Modifier.height(10.dp))
+
+            Spacer(Modifier.height(16.dp))
+
             content()
         }
     }
 }
+
+@Composable
+private fun ProfileInfoCard(
+    title: String,
+    value: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
 
 @Composable
 private fun ProfileRow(label: String, value: String) {

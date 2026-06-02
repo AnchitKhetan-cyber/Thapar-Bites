@@ -2,7 +2,6 @@ package com.ccs.thaparbites.ui.home
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,10 +25,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ccs.thaparbites.data.dummy.*
 import com.ccs.thaparbites.ui.theme.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.ccs.thaparbites.R
 
 // ─────────────────────────────────────────────
 //  Screen (wired to nav)
 // ─────────────────────────────────────────────
+
+
 
 @Composable
 fun HomeScreen(
@@ -42,10 +47,17 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory())
 ) {
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-    var selectedLocation by remember { mutableStateOf(campusLocations.first()) }
+    var selectedLocation by remember {
+        mutableStateOf(campusLocations.first())
+    }
 
     Scaffold(
-        topBar = { HomeTopBar(cartItemCount = cartItemCount, onCartClick = onCartClick) },
+        topBar = {
+            HomeTopBar(
+                cartItemCount = cartItemCount,
+                onCartClick = onCartClick
+            )
+        },
         bottomBar = {
             HomeBottomBar(
                 onHomeClick = {},
@@ -59,7 +71,6 @@ fun HomeScreen(
 
         when (val state = uiState) {
 
-            // ── Loading ───────────────────────────────────
             is HomeUiState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -67,9 +78,15 @@ fun HomeScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
                         Spacer(Modifier.height(16.dp))
+
                         Text(
                             "Loading canteens...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -79,7 +96,6 @@ fun HomeScreen(
                 }
             }
 
-            // ── Error ─────────────────────────────────────
             is HomeUiState.Error -> {
                 Box(
                     modifier = Modifier
@@ -92,29 +108,39 @@ fun HomeScreen(
                         modifier = Modifier.padding(32.dp)
                     ) {
                         Text("😕", fontSize = 48.sp)
+
                         Spacer(Modifier.height(12.dp))
+
                         Text(
                             "Couldn't load canteens",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+
                         Spacer(Modifier.height(4.dp))
+
                         Text(
                             state.message,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
                         Spacer(Modifier.height(24.dp))
-                        Button(onClick = { homeViewModel.retry() }) {
+
+                        Button(
+                            onClick = { homeViewModel.retry() }
+                        ) {
                             Text("Try Again")
                         }
                     }
                 }
             }
 
-            // ── Success ───────────────────────────────────
             is HomeUiState.Success -> {
-                val stores = state.stores.filter { it.location == selectedLocation }
+                val stores =
+                    state.stores.filter {
+                        it.location == selectedLocation
+                    }
 
                 LazyColumn(
                     modifier = Modifier
@@ -122,35 +148,41 @@ fun HomeScreen(
                         .padding(padding),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    // Greeting banner
-                    item {
-                        GreetingBanner(userName = state.userName)
-                    }
 
-                    // Location chips
                     item {
-                        LocationSelector(
-                            locations = campusLocations,
-                            selected  = selectedLocation,
-                            onSelect  = { selectedLocation = it }
+                        GreetingBanner(
+                            userName = state.userName
                         )
                     }
 
-                    // Section header
+                    item {
+                        LocationSelector(
+                            locations = campusLocations,
+                            selected = selectedLocation,
+                            onSelect = {
+                                selectedLocation = it
+                            }
+                        )
+                    }
+
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp
+                                ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${stores.size} Places",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+                                fontWeight = FontWeight.Bold
                             )
+
                             Spacer(Modifier.weight(1f))
+
                             Text(
                                 text = "at $selectedLocation",
                                 style = MaterialTheme.typography.bodySmall,
@@ -159,14 +191,23 @@ fun HomeScreen(
                         }
                     }
 
-                    // Store cards
                     if (stores.isEmpty()) {
-                        item { EmptyLocationState(location = selectedLocation) }
+                        item {
+                            EmptyLocationState(
+                                location = selectedLocation
+                            )
+                        }
                     } else {
-                        items(stores, key = { it.id }) { store ->
+                        items(
+                            stores,
+                            key = { it.id }
+                        ) { store ->
+
                             StoreCard(
-                                store   = store,
-                                onClick = { onStoreClick(store) },
+                                store = store,
+                                onClick = {
+                                    onStoreClick(store)
+                                },
                                 modifier = Modifier.animateItem()
                             )
                         }
@@ -176,7 +217,6 @@ fun HomeScreen(
         }
     }
 }
-
 // ─────────────────────────────────────────────
 //  Top Bar
 // ─────────────────────────────────────────────
@@ -399,7 +439,9 @@ fun StoreCard(
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(enabled = store.status != StoreStatus.CLOSED, onClick = onClick),
         shape    = CardShape,
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
