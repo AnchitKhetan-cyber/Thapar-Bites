@@ -16,6 +16,9 @@ object NavRoutes {
 
     const val EXPENSES = "expenses"
 
+    const val SHOP_LOGIN     = "shop_login"
+    const val SHOP_DASHBOARD = "shop_dashboard"
+
     // Helpers to build parameterised routes
     fun store(storeId: String) = "store/$storeId"
     fun menu(storeId: String)  = "menu/$storeId"
