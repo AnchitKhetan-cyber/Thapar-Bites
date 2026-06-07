@@ -3,8 +3,8 @@ package com.ccs.thaparbites.ui.menu
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.thaparbites.shared.MenuItem   // ← changed
-import com.thaparbites.shared.Canteen    // ← changed (was Store)
+import com.ccs.thaparbites.data.dummy.MenuItem
+import com.ccs.thaparbites.data.dummy.Store
 import com.ccs.thaparbites.data.repository.CanteenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 sealed class MenuUiState {
     object Loading : MenuUiState()
     data class Success(
-        val canteen: Canteen,        // ← was store: Store
+        val store: Store,
         val menuItems: List<MenuItem>
     ) : MenuUiState()
     data class Error(val message: String) : MenuUiState()
@@ -33,15 +33,15 @@ class MenuViewModel(
     private fun loadMenu() {
         viewModelScope.launch {
             try {
-                val canteen = repository.getStore(canteenId)  // repository call unchanged
-                if (canteen == null) {
+                val store = repository.getStore(canteenId)
+                if (store == null) {
                     _uiState.value = MenuUiState.Error("Canteen not found")
                     return@launch
                 }
 
                 repository.observeMenuItems(canteenId).collect { items ->
                     _uiState.value = MenuUiState.Success(
-                        canteen   = canteen,   // ← was store = store
+                        store = store,   // ← was store = store
                         menuItems = items
                     )
                 }
